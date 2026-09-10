@@ -23,13 +23,12 @@
 /*.log
 /mcmodsrepo/
 
-# Local-only agent context and validation evidence
-/AGENTS.md
-/AGENT.md
-/agent-notes/
-/.agent/
-/.agents/
-/.codex/
+AGENTS.md
+AGENT.md
+agent-notes/
+.agent/
+.agents/
+.codex/
 /evidence/
 /evidence-*/
 /*-evidence/
