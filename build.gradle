@@ -1,0 +1,335 @@
+import org.apache.tools.ant.filters.FixCrLfFilter
+
+plugins {
+    id 'java'
+    id 'eclipse'
+    id 'idea'
+    id 'maven-publish'
+    id 'net.minecraftforge.renamer' version '1.1.5'
+    id 'net.minecraftforge.gradle' version '7.0.34'
+}
+
+group = project.mod_group
+version = project.mod_version
+base.archivesName = 'RealisticDeposits'
+
+def versionParts = project.mod_version.toString().tokenize('.')
+if (versionParts.size() != 4 || !versionParts.every { it ==~ /\d+/ }) {
+    throw new GradleException("mod_version must use Major.Minor.Bug.Target numeric form: ${project.mod_version}")
+}
+
+def minecraftParts = project.minecraft_version.toString().tokenize('.')
+if (minecraftParts.size() != 3 || !minecraftParts.every { it ==~ /\d+/ }) {
+    throw new GradleException("minecraft_version must use major.minor.patch numeric form: ${project.minecraft_version}")
+}
+def expectedTarget = "${minecraftParts[0]}" \
+        + "${minecraftParts[1].padLeft(2, '0')}" \
+        + "${minecraftParts[2].padLeft(2, '0')}" \
+        + project.loader_code
+if (versionParts[3] != expectedTarget) {
+    throw new GradleException("mod_version target ${versionParts[3]} does not match "
+            + "Minecraft ${project.minecraft_version} ${project.loader_name} target ${expectedTarget}")
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(8)
+    withSourcesJar()
+    withJavadocJar()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    javaCompiler = javaToolchains.compilerFor {
+        languageVersion = JavaLanguageVersion.of(8)
+    }
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+    options.encoding = 'UTF-8'
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+}
+
+tasks.withType(Javadoc).configureEach {
+    failOnError = false
+    options.encoding = 'UTF-8'
+    options.addStringOption('Xdoclint:none', '-quiet')
+    options.addBooleanOption('notimestamp', true)
+}
+
+tasks.withType(AbstractArchiveTask).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+
+def archiveTextPatterns = [
+        '**/*.cfg', '**/*.css', '**/*.html', '**/*.java', '**/*.js',
+        '**/*.json', '**/*.lang', '**/*.mcmeta', '**/*.md',
+        '**/*.properties', '**/*.txt', '**/*.xml',
+        '**/element-list', '**/package-list'
+]
+def normalizeArchiveLineEndings = { details ->
+    details.filter(FixCrLfFilter,
+            eol: FixCrLfFilter.CrLf.newInstance('lf'),
+            eof: FixCrLfFilter.AddAsisRemove.newInstance('asis'))
+}
+
+minecraft {
+    mappings channel: project.mapping_channel, version: project.mapping_version
+
+    runs {
+        configureEach {
+            workingDir.convention layout.projectDirectory.dir('run')
+            systemProperty 'forge.logging.console.level', 'info'
+        }
+        register('client')
+        register('server') {
+            // Forge 1.10 accepts the literal argument, without a leading '--'.
+            args 'nogui'
+        }
+    }
+}
+
+// Forge 1.10 expects classes and resources beneath one development-mod root.
+// Keep canonical Gradle outputs separate and create a merged launch-only root.
+def forge10DevelopmentOutput = layout.buildDirectory.dir('forge10-development/main')
+def syncForge10DevelopmentResources = tasks.register('syncForge10DevelopmentResources', Sync) {
+    group = 'ide'
+    dependsOn tasks.named('classes')
+    from tasks.named('compileJava', JavaCompile).flatMap { it.destinationDirectory }
+    from sourceSets.main.output.resourcesDir
+    into forge10DevelopmentOutput
+}
+tasks.configureEach {
+    if (name == 'runClient' || name == 'runServer') {
+        dependsOn syncForge10DevelopmentResources
+        doFirst {
+            Set<File> splitMainOutputs = [
+                    tasks.named('compileJava', JavaCompile).get().destinationDirectory.get().asFile,
+                    sourceSets.main.output.resourcesDir
+            ] as Set<File>
+            classpath = files(forge10DevelopmentOutput, classpath.filter {
+                !splitMainOutputs.contains(it)
+            })
+        }
+    }
+}
+
+repositories {
+    minecraft.mavenizer(it)
+    maven fg.forgeMaven
+    maven fg.minecraftLibsMaven
+    mavenCentral()
+    maven {
+        name = 'CurseMaven'
+        url = 'https://www.cursemaven.com'
+        content { includeGroup 'curse.maven' }
+    }
+    maven {
+        name = 'MinecraftLibraries'
+        url = 'https://libraries.minecraft.net/'
+    }
+}
+
+dependencies {
+    implementation minecraft.dependency(
+            "net.minecraftforge:forge:${project.minecraft_version}-${project.forge_version}")
+    // ForgeGradle 7's legacy target does not expose the later fg.deobf helper.
+    // OreSpawn's public API types and Forge 1.10 runtime artifact are consumed
+    // directly; the exact file identity is pinned above.
+    implementation("curse.maven:mmd-orespawn-${project.orespawn_curse_project_id}:"
+            + project.orespawn_curse_file_id) {
+        transitive = false
+    }
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.2'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'
+}
+
+tasks.named('processResources', ProcessResources) {
+    filteringCharset = 'UTF-8'
+    inputs.property('version', project.version)
+    inputs.property('mcversion', project.minecraft_version)
+    inputs.property('orespawnVersionRange', project.orespawn_version_range)
+
+    filesMatching('mcmod.info') {
+        expand version: project.version,
+                mcversion: project.minecraft_version,
+                orespawnVersionRange: project.orespawn_version_range
+    }
+    filesMatching(archiveTextPatterns, normalizeArchiveLineEndings)
+}
+
+def prepareEclipseResources = tasks.register('prepareEclipseResources') {
+    group = 'ide'
+    description = 'Copies processed production resources into Eclipse output.'
+    dependsOn tasks.named('processResources')
+    doLast {
+        project.copy {
+            from(layout.buildDirectory.dir('resources/main'))
+            into(layout.projectDirectory.dir('bin/main'))
+        }
+    }
+}
+
+eclipse {
+    classpath {
+        downloadSources = true
+        downloadJavadoc = true
+    }
+    synchronizationTasks 'isolateEclipseProductionRuns'
+}
+
+tasks.register('configureEclipseBuildship') {
+    group = 'ide'
+    description = 'Creates local Buildship preferences for the shared Gradle cache.'
+    doLast {
+        File preferencesFile = file('.settings/org.eclipse.buildship.core.prefs')
+        Properties preferences = new Properties()
+        [
+                'eclipse.preferences.version'    : '1',
+                'connection.gradle.distribution': 'GRADLE_DISTRIBUTION(WRAPPER)',
+                'connection.gradle.user.home'   : gradle.gradleUserHomeDir.canonicalPath,
+                'connection.project.dir'        : '',
+                'gradle.user.home'               : gradle.gradleUserHomeDir.canonicalPath,
+                'override.workspace.settings'   : 'true'
+        ].each { key, value -> preferences.setProperty(key, value) }
+        preferencesFile.parentFile.mkdirs()
+        preferencesFile.withOutputStream {
+            preferences.store(it, 'Generated by Realistic Deposits Buildship setup.')
+        }
+    }
+}
+
+tasks.register('isolateEclipseProductionRuns') {
+    group = 'ide'
+    description = 'Marks ordinary Eclipse launches as production-only.'
+    dependsOn tasks.named('genEclipseRuns')
+    dependsOn tasks.named('configureEclipseBuildship')
+    dependsOn prepareEclipseResources
+    doLast {
+        ['runClient.launch', 'runServer.launch'].each { name ->
+            File launch = file(name)
+            if (!launch.isFile()) {
+                throw new GradleException("ForgeGradle did not generate ${name}")
+            }
+            String contents = launch.getText('UTF-8')
+            if (!contents.contains('org.eclipse.jdt.launching.ATTR_EXCLUDE_TEST_CODE')) {
+                contents = contents.replace('</launchConfiguration>',
+                        '  <booleanAttribute key="org.eclipse.jdt.launching.ATTR_EXCLUDE_TEST_CODE" value="true"/>\n'
+                                + '</launchConfiguration>')
+            }
+            launch.setText(contents.replace('\r\n', '\n'), 'UTF-8')
+        }
+    }
+}
+
+tasks.register('verifyEclipseProductionClasspath') {
+    group = 'verification'
+    description = 'Verifies ordinary Eclipse launches and processed resources.'
+    dependsOn tasks.named('isolateEclipseProductionRuns')
+    doLast {
+        File processedMetadata = file('bin/main/mcmod.info')
+        if (!processedMetadata.isFile()) {
+            throw new GradleException('Eclipse output is missing processed mcmod.info')
+        }
+        String metadata = processedMetadata.getText('UTF-8')
+        if (!metadata.contains('"version": "' + project.version + '"')
+                || metadata.contains('${version}')) {
+            throw new GradleException('Eclipse metadata is not version-expanded')
+        }
+        ['runClient.launch', 'runServer.launch'].each { name ->
+            String contents = file(name).getText('UTF-8').replace('\\', '/')
+            ['src/test', 'bin/test', 'build/classes/java/test', 'junit-',
+             'opentest4j-', 'junit-platform-'].each { forbidden ->
+                if (contents.contains(forbidden)) {
+                    throw new GradleException("${name} exposes ${forbidden}")
+                }
+            }
+            if (!contents.contains('ATTR_EXCLUDE_TEST_CODE')
+                    || !contents.contains('PROJECT_ATTR" value="RealisticDeposits"')) {
+                throw new GradleException("${name} is not a production-only RealisticDeposits launch")
+            }
+            if (name == 'runServer.launch'
+                    && (!contents.contains(' -- nogui"') || contents.contains('--nogui'))) {
+                throw new GradleException('Forge 1.10 server launch must use bare nogui')
+            }
+        }
+    }
+}
+
+tasks.named('jar', Jar) {
+    archiveClassifier = 'deobf'
+    destinationDirectory = layout.buildDirectory.dir('libs-dev')
+    manifest {
+        attributes([
+                'Specification-Title'       : project.mod_name,
+                'Specification-Vendor'      : project.mod_authors,
+                'Specification-Version'     : versionParts[0],
+                'Implementation-Title'      : base.archivesName.get(),
+                'Implementation-Version'    : project.version,
+                'Implementation-Vendor'     : project.mod_authors,
+                'Maven-Artifact'            : "${project.group}:${base.archivesName.get()}:${project.version}",
+                'Built-On-Java'             : project.java_version,
+                'Built-On'                  : "${project.minecraft_version}-${project.forge_version}"
+        ])
+    }
+}
+
+def releaseJar = renamer.classes(tasks.named('jar', Jar)) {
+    map.from minecraft.dependency.toSrgFile
+    archiveClassifier = null
+    output = layout.buildDirectory.file("libs/RealisticDeposits-${project.version}.jar")
+}
+
+tasks.named('sourcesJar', Jar) {
+    includeEmptyDirs = false
+    archiveClassifier = 'sources'
+    filesMatching(archiveTextPatterns, normalizeArchiveLineEndings)
+}
+
+tasks.named('javadocJar', Jar) {
+    archiveClassifier = 'javadoc'
+    filesMatching(archiveTextPatterns, normalizeArchiveLineEndings)
+}
+
+['apiElements', 'runtimeElements'].each { configurationName ->
+    configurations.named(configurationName) {
+        artifacts.clear()
+    }
+    artifacts {
+        add(configurationName, releaseJar)
+    }
+}
+
+tasks.named('assemble') {
+    dependsOn releaseJar
+    dependsOn tasks.named('sourcesJar')
+    dependsOn tasks.named('javadocJar')
+}
+
+tasks.register('verifyProjectIdentity') {
+    group = 'verification'
+    dependsOn tasks.named('processResources')
+    doLast {
+        if (project.mod_id != 'realisticdeposits'
+                || project.curseforge_project_slug != 'realisticdeposits'
+                || project.mod_group != 'zone.moddev.mc.realisticdeposits') {
+            throw new GradleException('Unexpected Realistic Deposits project identity')
+        }
+        if (project.minecraft_version != '1.10.2'
+                || project.forge_version != '12.18.3.2511'
+                || project.orespawn_version != '4.0.16.110021'
+                || project.orespawn_curse_file_id != '8844528') {
+            throw new GradleException('Unexpected target or OreSpawn dependency identity')
+        }
+        if (project.mod_version.toString().contains('-')) {
+            throw new GradleException('Version qualifiers are forbidden by the shared numeric policy')
+        }
+    }
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('verifyProjectIdentity')
+}

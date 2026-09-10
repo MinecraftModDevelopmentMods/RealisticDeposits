@@ -1,0 +1,19 @@
+[
+  {
+    "modid": "realisticdeposits",
+    "name": "Realistic Deposits",
+    "description": "Rare, massive, and geologically aware ore deposits powered by MMD OreSpawn.",
+    "version": "${version}",
+    "mcversion": "${mcversion}",
+    "url": "https://www.curseforge.com/minecraft/mc-mods/realisticdeposits",
+    "updateUrl": "",
+    "authorList": ["SkyBlade1978", "the MMD Team"],
+    "credits": "Built for the Minecraft Mod Development community",
+    "logoFile": "assets/realisticdeposits/textures/logo.png",
+    "screenshots": [],
+    "dependencies": [
+      "required-after:forge@[12.18.3.2511,)",
+      "required-after:orespawn@${orespawnVersionRange}"
+    ]
+  }
+]

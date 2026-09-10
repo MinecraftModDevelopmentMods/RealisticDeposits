@@ -1,0 +1,47 @@
+# Eclipse
+/bin/
+/*.launch
+/.settings/
+/.metadata/
+/.classpath
+/.project
+/.eclipse/
+
+# IntelliJ IDEA
+/out/
+/.idea/
+*.iml
+*.ipr
+*.iws
+
+# Gradle and generated artifacts
+/.gradle/
+/build/
+/run/
+/run-*/
+/logs/
+/*.log
+/mcmodsrepo/
+
+# Local-only agent context and validation evidence
+/AGENTS.md
+/AGENT.md
+/agent-notes/
+/.agent/
+/.agents/
+/.codex/
+/evidence/
+/evidence-*/
+/*-evidence/
+/benchmark-*/
+/regression-*/
+/*.jfr
+/*.hprof
+/hs_err_pid*.log
+/replay_pid*.log
+
+# Local secrets and dependency mirrors
+/secret.json
+/libs/
+
+.DS_Store
