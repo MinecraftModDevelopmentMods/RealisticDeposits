@@ -17,7 +17,7 @@ save-stability contracts are implemented and tested.
 ## Development
 
 Import the project through Eclipse Buildship and use the generated ForgeGradle
-runs. Automated 1.10 server runs use the literal `nogui` argument.
+runs.
 
 Realistic Deposits is licensed under the GNU Lesser General Public License
 version 2.1.
