@@ -76,10 +76,16 @@ def normalizeArchiveLineEndings = { details ->
 
 minecraft {
     mappings channel: project.mapping_channel, version: project.mapping_version
+    // Packaged Forge applies OreSpawn's SRG transformer. ForgeGradle's mapped
+    // development runtime needs the same two rules in mapped form; this input
+    // is deliberately outside main resources and is never shipped by this mod.
+    accessTransformer.from(file('gradle/orespawn-development-access-transformer.cfg'))
+    String configuredRunDirectory = providers.gradleProperty('realisticDepositsRunDirectory')
+            .getOrElse('run')
 
     runs {
         configureEach {
-            workingDir.convention layout.projectDirectory.dir('run')
+            workingDir.convention layout.projectDirectory.dir(configuredRunDirectory)
             systemProperty 'forge.logging.console.level', 'info'
         }
         register('client')
@@ -134,9 +140,9 @@ repositories {
 dependencies {
     implementation minecraft.dependency(
             "net.minecraftforge:forge:${project.minecraft_version}-${project.forge_version}")
+    // Link only to OreSpawn's public packages; the dependency remains an
+    // ordinary external runtime mod and is never bundled into this jar.
     // ForgeGradle 7's legacy target does not expose the later fg.deobf helper.
-    // OreSpawn's public API types and Forge 1.10 runtime artifact are consumed
-    // directly; the exact file identity is pinned above.
     implementation("curse.maven:mmd-orespawn-${project.orespawn_curse_project_id}:"
             + project.orespawn_curse_file_id) {
         transitive = false
@@ -330,6 +336,138 @@ tasks.register('verifyProjectIdentity') {
     }
 }
 
+tasks.register('verifyOreSpawnDependency') {
+    group = 'verification'
+    description = 'Verifies the exact released OreSpawn API/runtime and mapped development transformer.'
+    doLast {
+        def artifacts = configurations.runtimeClasspath.resolvedConfiguration.resolvedArtifacts
+        def oreSpawnArtifacts = artifacts.findAll { artifact ->
+            def id = artifact.moduleVersion.id
+            id.group == 'curse.maven' && id.name.startsWith('mmd-orespawn-')
+        }
+        if (oreSpawnArtifacts.size() != 1) {
+            throw new GradleException("Expected exactly one released OreSpawn artifact, found "
+                    + oreSpawnArtifacts.collect { it.moduleVersion.id })
+        }
+        File oreSpawnFile = oreSpawnArtifacts.first().file
+        String actualHash = java.security.MessageDigest.getInstance('SHA-256')
+                .digest(oreSpawnFile.bytes).encodeHex().toString().toUpperCase()
+        if (actualHash != project.orespawn_sha256) {
+            throw new GradleException("Released OreSpawn SHA-256 is ${actualHash}, expected "
+                    + project.orespawn_sha256)
+        }
+        java.util.zip.ZipFile archive = new java.util.zip.ZipFile(oreSpawnFile)
+        try {
+            def entry = archive.getEntry('META-INF/accesstransformer.cfg')
+            if (entry == null) throw new GradleException('Released OreSpawn has no access transformer')
+            List<String> releasedRules = archive.getInputStream(entry).getText('UTF-8').readLines()
+                    .findAll { !it.trim().isEmpty() }
+            List<String> mappedRules = file('gradle/orespawn-development-access-transformer.cfg')
+                    .readLines('UTF-8').findAll { !it.trim().isEmpty() }
+            if (releasedRules != [
+                    'public-f net.minecraft.world.WorldProvider field_76578_c',
+                    'public-f net.minecraft.world.gen.ChunkProviderOverworld field_186001_t'
+            ] || mappedRules != [
+                    'public-f net.minecraft.world.WorldProvider biomeProvider',
+                    'public-f net.minecraft.world.gen.ChunkProviderOverworld oceanBlock'
+            ]) {
+                throw new GradleException('OreSpawn development transformer no longer matches the release')
+            }
+        } finally {
+            archive.close()
+        }
+    }
+}
+
+tasks.register('verifyAlphaArtifacts') {
+    group = 'verification'
+    description = 'Audits the runnable alpha artifacts and their deliberate no-world-write boundary.'
+    dependsOn releaseJar
+    dependsOn tasks.named('sourcesJar')
+    dependsOn tasks.named('javadocJar')
+    doLast {
+        File mainFile = layout.buildDirectory.file("libs/RealisticDeposits-${project.version}.jar")
+                .get().asFile
+        File sourcesFile = tasks.named('sourcesJar', Jar).get().archiveFile.get().asFile
+        File javadocFile = tasks.named('javadocJar', Jar).get().archiveFile.get().asFile
+        [mainFile, sourcesFile, javadocFile].each { artifact ->
+            if (!artifact.isFile()) throw new GradleException("Missing artifact ${artifact}")
+        }
+
+        java.util.zip.ZipFile mainArchive = new java.util.zip.ZipFile(mainFile)
+        try {
+            Set<String> entries = mainArchive.entries().collect { it.name } as Set<String>
+            [
+                    'mcmod.info',
+                    'pack.mcmeta',
+                    'assets/realisticdeposits/defaults/vanilla.json',
+                    'assets/realisticdeposits/lang/en_US.lang',
+                    'assets/realisticdeposits/textures/logo.png',
+                    'zone/moddev/mc/realisticdeposits/RealisticDeposits.class',
+                    'zone/moddev/mc/realisticdeposits/client/RealisticDepositsGuiFactory.class',
+                    'zone/moddev/mc/realisticdeposits/command/RealisticDepositsCommand.class',
+                    'zone/moddev/mc/realisticdeposits/geometry/RegionDepositPlanner.class'
+            ].each { required ->
+                if (!entries.contains(required)) throw new GradleException("Main jar is missing ${required}")
+            }
+            entries.each { entry ->
+                if (entry.startsWith('zone/moddev/mc/orespawn/')
+                        || entry.contains('/test/') || entry.startsWith('org/junit/')) {
+                    throw new GradleException("Main jar leaks dependency or test content: ${entry}")
+                }
+                if (entry.endsWith('.class')) {
+                    byte[] bytes = mainArchive.getInputStream(mainArchive.getEntry(entry)).bytes
+                    int major = ((bytes[6] & 0xff) << 8) | (bytes[7] & 0xff)
+                    if (major != 52) {
+                        throw new GradleException("${entry} uses class major ${major}, expected 52")
+                    }
+                }
+            }
+            String metadata = mainArchive.getInputStream(mainArchive.getEntry('mcmod.info'))
+                    .getText('UTF-8')
+            if (!metadata.contains('"version": "' + project.version + '"')
+                    || metadata.contains('${version}')
+                    || !metadata.contains('World writes await public OreSpawn extension contracts')) {
+                throw new GradleException('Main jar metadata does not describe the exact alpha identity')
+            }
+            def manifestEntry = mainArchive.getEntry('META-INF/MANIFEST.MF')
+            if (manifestEntry == null) throw new GradleException('Main jar has no manifest')
+            def manifest = new java.util.jar.Manifest(mainArchive.getInputStream(manifestEntry))
+            if (manifest.mainAttributes.getValue('Implementation-Version') != project.version.toString()
+                    || manifest.mainAttributes.getValue('Maven-Artifact')
+                    != "${project.group}:${base.archivesName.get()}:${project.version}") {
+                throw new GradleException('Main jar manifest identity is incorrect')
+            }
+        } finally {
+            mainArchive.close()
+        }
+
+        java.util.zip.ZipFile sourcesArchive = new java.util.zip.ZipFile(sourcesFile)
+        try {
+            Set<String> entries = sourcesArchive.entries().collect { it.name } as Set<String>
+            if (!entries.contains('zone/moddev/mc/realisticdeposits/geometry/RegionDepositPlanner.java')
+                    || entries.any { it.endsWith('.class') || it.startsWith('zone/moddev/mc/orespawn/') }) {
+                throw new GradleException('Sources jar contents are incomplete or contaminated')
+            }
+        } finally {
+            sourcesArchive.close()
+        }
+
+        java.util.zip.ZipFile javadocArchive = new java.util.zip.ZipFile(javadocFile)
+        try {
+            Set<String> entries = javadocArchive.entries().collect { it.name } as Set<String>
+            if (!entries.contains('index.html')
+                    || entries.any { it.endsWith('.class') || it.startsWith('zone/moddev/mc/orespawn/') }) {
+                throw new GradleException('Javadoc jar contents are incomplete or contaminated')
+            }
+        } finally {
+            javadocArchive.close()
+        }
+    }
+}
+
 tasks.named('check') {
     dependsOn tasks.named('verifyProjectIdentity')
+    dependsOn tasks.named('verifyOreSpawnDependency')
+    dependsOn tasks.named('verifyAlphaArtifacts')
 }

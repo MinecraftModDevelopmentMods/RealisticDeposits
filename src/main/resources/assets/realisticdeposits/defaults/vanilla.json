@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "catalog": "realisticdeposits:vanilla",
+  "deposits": [
+    {
+      "id": "realisticdeposits:overworld_iron_formation",
+      "enabled": true,
+      "resource": "minecraft:iron_ore",
+      "alignment": "massive_rare",
+      "interaction": "additive",
+      "dimensions": [
+        "minecraft:overworld"
+      ],
+      "hosts": [
+        "minecraft:stone"
+      ],
+      "min_y": 8,
+      "max_y": 56,
+      "region_spacing_chunks": 32,
+      "selection_chance": 0.25,
+      "salt": 7146057694168187204,
+      "shape": {
+        "type": "stratiform_seam",
+        "strike_length": [192, 384],
+        "down_dip_width": [48, 128],
+        "thickness": [1.5, 5.0],
+        "dip_degrees": [-35.0, 35.0],
+        "bend_amplitude": 18.0,
+        "bend_wavelength": 144.0,
+        "fold_amplitude": 8.0,
+        "fold_wavelength": 96.0,
+        "density": 0.18,
+        "edge_falloff": 0.20
+      }
+    }
+  ]
+}

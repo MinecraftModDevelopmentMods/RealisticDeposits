@@ -2,7 +2,7 @@
   {
     "modid": "realisticdeposits",
     "name": "Realistic Deposits",
-    "description": "Rare, massive, and geologically aware ore deposits powered by MMD OreSpawn.",
+    "description": "Alpha planner for rare, massive, and geologically aware ore deposits powered by MMD OreSpawn. World writes await public OreSpawn extension contracts.",
     "version": "${version}",
     "mcversion": "${mcversion}",
     "url": "https://www.curseforge.com/minecraft/mc-mods/realisticdeposits",

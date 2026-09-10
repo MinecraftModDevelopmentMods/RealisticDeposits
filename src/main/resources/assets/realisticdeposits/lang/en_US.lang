@@ -1,1 +1,9 @@
 realisticdeposits.name=Realistic Deposits
+screen.realisticdeposits.title=Realistic Deposits
+screen.realisticdeposits.loaded=%s catalog(s), %s deposit definition(s) loaded
+screen.realisticdeposits.alpha_status=Alpha planning engine: ready
+screen.realisticdeposits.worldgen_disabled=World generation: waiting for an OreSpawn API extension
+screen.realisticdeposits.orespawn_ui_pending=OreSpawn editor integration is not available in API 1
+button.realisticdeposits.reload=Reload Definitions
+status.realisticdeposits.reload_ok=Definitions reloaded successfully.
+status.realisticdeposits.reload_failed=Reload failed: %s
