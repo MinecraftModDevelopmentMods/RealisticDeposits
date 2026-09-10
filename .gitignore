@@ -23,9 +23,6 @@
 /*.log
 /mcmodsrepo/
 
-# Local-only agent context and validation evidence. These rules are deliberately
-# unanchored so agent material remains private even if a later port introduces
-# it below a nested module or fixture directory.
 AGENTS.md
 AGENT.md
 agent-notes/
