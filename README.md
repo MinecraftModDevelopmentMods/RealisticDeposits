@@ -26,7 +26,7 @@ the same region-scale body through OreSpawn's existing safe placement method.
 ## Development
 
 Import the project through Eclipse Buildship and use the generated ForgeGradle
-runs. Automated 1.10 server runs use the literal `nogui` argument.
+runs.
 
 ## Alpha use
 
