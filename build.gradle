@@ -227,18 +227,48 @@ tasks.register('configureEclipseBuildship') {
 
 tasks.register('isolateEclipseProductionRuns') {
     group = 'ide'
-    description = 'Marks ordinary Eclipse launches as production-only.'
+    description = 'Normalizes Slime Launcher paths and marks ordinary Eclipse launches as production-only.'
     dependsOn tasks.named('genEclipseRuns')
     dependsOn tasks.named('configureEclipseBuildship')
     dependsOn prepareEclipseResources
     doLast {
-        ['runClient.launch', 'runServer.launch'].each { name ->
+        ['runClient.launch', 'runServer.launch',
+         'runTestClient.launch', 'runTestServer.launch'].each { name ->
             File launch = file(name)
             if (!launch.isFile()) {
                 throw new GradleException("ForgeGradle did not generate ${name}")
             }
             String contents = launch.getText('UTF-8')
-            if (!contents.contains('org.eclipse.jdt.launching.ATTR_EXCLUDE_TEST_CODE')) {
+
+            // Slime Launcher parses this attribute itself rather than receiving
+            // Eclipse's already separated argument vector. Quote every path so
+            // workspaces such as "RealisticDeposits 110" remain one argument.
+            def programArguments = contents =~ /(<stringAttribute key="org\.eclipse\.jdt\.launching\.PROGRAM_ARGUMENTS" value=")([^"]*)("\/>)/
+            if (programArguments.count != 1) {
+                throw new GradleException("ForgeGradle generated malformed program arguments in ${name}")
+            }
+            String arguments = programArguments[0][2]
+            ['cache', 'metadata', 'to-srg', 'to-obf'].each { flag ->
+                String prefix = "--${flag} "
+                int valueStart = arguments.indexOf(prefix)
+                if (valueStart < 0) {
+                    throw new GradleException("ForgeGradle omitted --${flag} from ${name}")
+                }
+                valueStart += prefix.length()
+                int valueEnd = arguments.indexOf(' --', valueStart)
+                if (valueEnd < 0) {
+                    throw new GradleException("ForgeGradle generated an unterminated --${flag} path in ${name}")
+                }
+                String value = arguments.substring(valueStart, valueEnd)
+                if (!value.startsWith('&quot;') || !value.endsWith('&quot;')) {
+                    arguments = "${arguments.substring(0, valueStart)}&quot;${value}&quot;${arguments.substring(valueEnd)}"
+                }
+            }
+            contents = contents.replace(programArguments[0][0],
+                    programArguments[0][1] + arguments + programArguments[0][3])
+
+            if ((name == 'runClient.launch' || name == 'runServer.launch')
+                    && !contents.contains('org.eclipse.jdt.launching.ATTR_EXCLUDE_TEST_CODE')) {
                 contents = contents.replace('</launchConfiguration>',
                         '  <booleanAttribute key="org.eclipse.jdt.launching.ATTR_EXCLUDE_TEST_CODE" value="true"/>\n'
                                 + '</launchConfiguration>')
@@ -277,6 +307,15 @@ tasks.register('verifyEclipseProductionClasspath') {
             if (name == 'runServer.launch'
                     && (!contents.contains(' -- nogui"') || contents.contains('--nogui'))) {
                 throw new GradleException('Forge 1.10 server launch must use bare nogui')
+            }
+        }
+        ['runClient.launch', 'runServer.launch',
+         'runTestClient.launch', 'runTestServer.launch'].each { name ->
+            String contents = file(name).getText('UTF-8')
+            ['cache', 'metadata', 'to-srg', 'to-obf'].each { flag ->
+                if (!contents.contains("--${flag} &quot;")) {
+                    throw new GradleException("Eclipse launch does not quote its --${flag} path: ${name}")
+                }
             }
         }
     }
