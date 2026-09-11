@@ -18,7 +18,9 @@ maintained OreSpawn branches across Forge and NeoForge.
 - Rare, region-scale deposits that remain identical regardless of chunk
   generation order.
 - Long, folded `stratiform_seam` formations instead of enlarged spherical ore
-  blobs. Each chunk writes only its own part of a deposit.
+  blobs. Connected trunks and oblique branches create followable mine-scale
+  runs, while a lower-grade halo leaves smaller satellite pockets. Each chunk
+  writes only its own deterministic part of a deposit.
 - Massive-and-rare, geome-aware, and host-rock-aware generation modes.
 - Additive, hybrid, and replacement policies for controlling interaction with
   ordinary ore generation.
@@ -55,8 +57,10 @@ config/realisticdeposits/deposits/vanilla.json
 ```
 
 The supplied definition describes a rare iron formation using a long, thin,
-folded `stratiform_seam`. Deposits only affect newly generated chunks; the mod
-does not retrogen or rewrite an existing chunk.
+folded `stratiform_seam`. Its `density` controls the disseminated halo and the
+width of the connected mineralized ribbons rather than producing a uniformly
+random cloud. Deposits only affect newly generated chunks; the mod does not
+retrogen or rewrite an existing chunk.
 
 Every definition chooses one alignment mode:
 

@@ -113,6 +113,8 @@ minecraft {
         configureEach {
             workingDir.convention layout.projectDirectory.dir(configuredRunDirectory)
             systemProperty 'forge.logging.console.level', 'info'
+            systemProperty 'realisticDeposits.topologyProbe',
+                    providers.gradleProperty('realisticDepositsTopologyProbe').getOrElse('false')
         }
         register('client')
         register('server') {

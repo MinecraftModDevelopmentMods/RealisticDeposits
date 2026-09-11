@@ -109,6 +109,26 @@ class StratiformSeamPatternTest {
 		assertEquals(forward, reverse);
 	}
 
+	@Test
+	void sparseNegativeEdgeChunkRetainsEveryPlannedPosition() {
+		DepositDefinition definition = new DepositDefinition(
+				"realisticdeposits:overworld_iron_formation", true, "minecraft:iron_ore",
+				AlignmentMode.MASSIVE_RARE, InteractionPolicy.ADDITIVE,
+				Collections.singleton("minecraft:overworld"), Collections.singleton("minecraft:stone"),
+				8, 56, 32, 0.25D, 7146057694168187204L,
+				new StratiformSeamSettings(new IntRange(192, 384), new IntRange(48, 128),
+						1.5D, 5.0D, -35.0D, 35.0D, 18.0D, 144.0D,
+						8.0D, 96.0D, 0.18D, 0.2D));
+		long savedWorldSeed = 3346071746553592696L;
+		RecordingContext context = new RecordingContext(-19, -2, Optional.empty(), savedWorldSeed);
+
+		assertTrue(StratiformSeamPattern.place(definition, context));
+		assertTrue(context.placed.contains("-304,33,-26"));
+		assertTrue(context.placed.contains("-301,33,-23"));
+		assertTrue(context.placed.contains("-300,33,-18"));
+		assertTrue(context.placed.contains("-301,36,-19"));
+	}
+
 	private static Set<String> render(DepositDefinition definition, int minChunkX, int maxChunkX,
 			int minChunkZ, int maxChunkZ, boolean reverse) {
 		Set<String> result = new HashSet<>();
@@ -147,12 +167,19 @@ class StratiformSeamPatternTest {
 		private final int chunkX;
 		private final int chunkZ;
 		private final Optional<GeologySampler> sampler;
+		private final long worldSeed;
 		private final Set<String> placed = new HashSet<>();
 
 		private RecordingContext(int chunkX, int chunkZ, Optional<GeologySampler> sampler) {
+			this(chunkX, chunkZ, sampler, SEED);
+		}
+
+		private RecordingContext(int chunkX, int chunkZ, Optional<GeologySampler> sampler,
+				long worldSeed) {
 			this.chunkX = chunkX;
 			this.chunkZ = chunkZ;
 			this.sampler = sampler;
+			this.worldSeed = worldSeed;
 		}
 
 		@Override public Random random() { return new Random(1L); }
@@ -165,7 +192,7 @@ class StratiformSeamPatternTest {
 		@Override public int spread() { return 0; }
 		@Override public int verticalSpread() { return 0; }
 		@Override public int nodeSize() { return 1; }
-		@Override public long worldSeed() { return SEED; }
+		@Override public long worldSeed() { return worldSeed; }
 		@Override public ResourceLocation dimension() { return new ResourceLocation("minecraft:overworld"); }
 		@Override public int chunkX() { return chunkX; }
 		@Override public int chunkZ() { return chunkZ; }

@@ -6,7 +6,8 @@
   original branding and numeric version policy.
 - Add strict schema-1 JSON catalogs and a default vanilla iron formation.
 - Add deterministic, chunk-order-independent region selection and a long,
-  thin, folded stratiform-seam planner suitable for sprawling mine networks.
+  thin, folded stratiform-seam planner with connected trunks, oblique branches
+  and a disseminated halo suitable for sprawling mine networks.
 - Add status, reload and preview commands plus a read-only Forge configuration
   screen.
 - Pin development to the exact local OreSpawn 4.1.0 API candidate and verify
