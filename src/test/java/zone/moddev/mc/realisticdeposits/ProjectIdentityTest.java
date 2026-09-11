@@ -11,7 +11,9 @@ class ProjectIdentityTest {
 		assertEquals("realisticdeposits", RealisticDeposits.MOD_ID);
 		assertEquals("Realistic Deposits", RealisticDeposits.NAME);
 		assertEquals("0.1.0.110021", RealisticDeposits.VERSION);
-		assertTrue(RealisticDeposits.class.getAnnotation(net.minecraftforge.fml.common.Mod.class)
-				.guiFactory().endsWith("RealisticDepositsGuiFactory"));
+		net.minecraftforge.fml.common.Mod annotation = RealisticDeposits.class.getAnnotation(
+				net.minecraftforge.fml.common.Mod.class);
+		assertTrue(annotation.guiFactory().endsWith("RealisticDepositsGuiFactory"));
+		assertEquals("required-after:orespawn@[4.1.0,5.0.0)", annotation.dependencies());
 	}
 }

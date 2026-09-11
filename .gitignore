@@ -42,5 +42,6 @@ agent-notes/
 # Local secrets and dependency mirrors
 /secret.json
 /libs/
+/local.properties
 
 .DS_Store

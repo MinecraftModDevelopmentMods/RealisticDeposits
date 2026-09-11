@@ -9,6 +9,13 @@
   thin, folded stratiform-seam planner suitable for sprawling mine networks.
 - Add status, reload and preview commands plus a read-only Forge configuration
   screen.
-- Verify exact OreSpawn dependency and development access-transformer identity.
-- Keep world writes disabled until OreSpawn exposes stable world/dimension/
-  chunk identity, geology sampling and a world-settings UI extension contract.
+- Pin development to the exact local OreSpawn 4.1.0 API candidate and verify
+  both its release and mapped development artifacts.
+- Register `realisticdeposits:stratiform_seam` as an OreSpawn custom pattern and
+  render deterministic current-chunk slices without retrogen.
+- Add massive-and-rare, centre-geome and per-block rock-family alignment.
+- Add additive, hybrid and replacement interaction policies; hybrid defaults
+  ordinary generation to 25%.
+- Add biome filters, safe missing-geology rejection, bounded diagnostics and
+  structural-change deferral for existing worlds.
+- Add the Realistic Deposits action to OreSpawn's World Settings screen.

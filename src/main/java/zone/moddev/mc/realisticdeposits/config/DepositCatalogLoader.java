@@ -20,18 +20,26 @@ import zone.moddev.mc.realisticdeposits.model.DepositDefinition;
 import zone.moddev.mc.realisticdeposits.model.IntRange;
 import zone.moddev.mc.realisticdeposits.model.InteractionPolicy;
 import zone.moddev.mc.realisticdeposits.model.StratiformSeamSettings;
+import zone.moddev.mc.orespawn.api.GeologyFamily;
 
 /** Strict parser for schema 1 with deterministic forward-key diagnostics. */
 public final class DepositCatalogLoader {
 	private static final Set<String> ROOT_KEYS = keys("schema_version", "catalog", "deposits");
 	private static final Set<String> DEPOSIT_KEYS = keys("id", "enabled", "resource", "alignment",
 			"interaction", "dimensions", "hosts", "min_y", "max_y", "region_spacing_chunks",
-			"selection_chance", "salt", "shape");
+			"selection_chance", "salt", "shape", "geomes", "rock_families", "biome_ids",
+			"excluded_biome_ids", "biome_dictionary", "excluded_biome_dictionary",
+			"background_generation_scale");
 	private static final Set<String> SHAPE_KEYS = keys("type", "strike_length", "down_dip_width",
 			"thickness", "dip_degrees", "bend_amplitude", "bend_wavelength",
 			"fold_amplitude", "fold_wavelength", "density", "edge_falloff");
 
 	private DepositCatalogLoader() { }
+
+	/** Parses one definition embedded in an OreSpawn pattern setting. */
+	public static DepositDefinition loadDefinition(JsonObject json, String source) {
+		return definition(json, source, new ArrayList<>());
+	}
 
 	public static DepositCatalog load(Reader reader, String source) {
 		try {
@@ -91,6 +99,12 @@ public final class DepositCatalogLoader {
 				AlignmentMode.parse(string(json, "alignment", path)),
 				InteractionPolicy.parse(string(json, "interaction", path)),
 				strings(json, "dimensions", path), strings(json, "hosts", path),
+				optionalStrings(json, "geomes", path), families(json, "rock_families", path),
+				optionalStrings(json, "biome_ids", path),
+				optionalStrings(json, "excluded_biome_ids", path),
+				optionalStrings(json, "biome_dictionary", path),
+				optionalStrings(json, "excluded_biome_dictionary", path),
+				optionalNumber(json, "background_generation_scale", path),
 				integer(json, "min_y", path), integer(json, "max_y", path),
 				integer(json, "region_spacing_chunks", path),
 				number(json, "selection_chance", path), longNumber(json, "salt", path), settings);
@@ -180,6 +194,26 @@ public final class DepositCatalogLoader {
 			result.add(values.get(i).getAsString());
 		}
 		return result;
+	}
+
+	private static List<String> optionalStrings(JsonObject json, String key, String path) {
+		return json.has(key) ? strings(json, key, path) : new ArrayList<>();
+	}
+
+	private static List<GeologyFamily> families(JsonObject json, String key, String path) {
+		List<GeologyFamily> result = new ArrayList<>();
+		for (String value : optionalStrings(json, key, path)) {
+			try {
+				result.add(GeologyFamily.valueOf(value.trim().toUpperCase(java.util.Locale.ROOT)));
+			} catch (IllegalArgumentException exception) {
+				throw invalid(path, "unknown rock family " + value, exception);
+			}
+		}
+		return result;
+	}
+
+	private static Double optionalNumber(JsonObject json, String key, String path) {
+		return json.has(key) ? Double.valueOf(number(json, key, path)) : null;
 	}
 
 	private static IntRange integerRange(JsonObject json, String key, String path) {

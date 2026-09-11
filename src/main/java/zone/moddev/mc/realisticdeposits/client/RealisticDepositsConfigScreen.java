@@ -10,7 +10,7 @@ import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.resources.I18n;
 
-/** Read-only alpha configuration summary with an explicit reload action. */
+/** Configuration summary with live geometry/alignment reload. */
 public final class RealisticDepositsConfigScreen extends GuiScreen {
 	private static final int DONE = 0;
 	private static final int RELOAD = 1;
@@ -54,11 +54,12 @@ public final class RealisticDepositsConfigScreen extends GuiScreen {
 				width / 2, 48, 0xA0A0A0);
 		drawCenteredString(fontRendererObj, I18n.format("screen.realisticdeposits.loaded",
 				state.catalogs().size(), state.definitions().size()), width / 2, 72, 0xFFFFFF);
-		drawCenteredString(fontRendererObj, I18n.format("screen.realisticdeposits.alpha_status"),
+		drawCenteredString(fontRendererObj, I18n.format("screen.realisticdeposits.generation_status",
+				state.integrationStatus().name().toLowerCase()),
 				width / 2, 96, 0xFFD080);
-		drawCenteredString(fontRendererObj, I18n.format("screen.realisticdeposits.worldgen_disabled"),
+		drawCenteredString(fontRendererObj, I18n.format("screen.realisticdeposits.reload_policy"),
 				width / 2, 112, 0xFFD080);
-		drawCenteredString(fontRendererObj, I18n.format("screen.realisticdeposits.orespawn_ui_pending"),
+		drawCenteredString(fontRendererObj, I18n.format("screen.realisticdeposits.orespawn_ui"),
 				width / 2, 136, 0xA0A0A0);
 		if (state.configRoot() != null) {
 			drawCenteredString(fontRendererObj, trim(state.configRoot().getPath(), 90),

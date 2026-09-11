@@ -13,30 +13,25 @@ projects.
 The project starts with Minecraft 1.10.2 and is intended to follow the
 maintained OreSpawn branches across Forge and NeoForge.
 
-## Current status
-
-Version `0.1.0.110021` is an early development preview. It can load and
-validate deposit definitions, plan deterministic formations, show their bounds
-with preview commands, and provide a configuration screen.
-
-It does **not** place or replace blocks yet. Installing this version will not
-add massive deposits to generated worlds. This limitation is intentional while
-the first generation integration is completed and tested.
-
-## Planned features
+## Current features
 
 - Rare, region-scale deposits that remain identical regardless of chunk
   generation order.
-- Long stratiform seams and other geologically inspired bodies instead of
-  simply enlarged spherical ore blobs.
+- Long, folded `stratiform_seam` formations instead of enlarged spherical ore
+  blobs. Each chunk writes only its own part of a deposit.
 - Massive-and-rare, geome-aware, and host-rock-aware generation modes.
 - Additive, hybrid, and replacement policies for controlling interaction with
   ordinary ore generation.
 - Configurable support for vanilla and modded resources.
-- Optional compatibility catalogs for Mineralogy, Base Metals, Modern Metals,
-  Base Minerals, and Base Gems where those mods are available.
 - Safe generation that avoids air, fluids, bedrock, block entities, structures,
   and undeclared host blocks.
+- Live reload for geometry and alignment tuning, with structural changes
+  clearly deferred until restart.
+- An entry in both Forge's Mods configuration and OreSpawn's World Settings.
+
+Compatibility catalogs for Mineralogy, Base Metals, Modern Metals, Base
+Minerals, and Base Gems will be added as those product lines become available
+on each target.
 
 ## Requirements
 
@@ -44,13 +39,13 @@ The current branch requires:
 
 - Minecraft 1.10.2;
 - Forge 12.18.3.2511 or a compatible newer Forge 12 build;
-- MMD OreSpawn 4.0.16 or newer, but earlier than OreSpawn 5;
+- MMD OreSpawn 4.1.0 or newer, but earlier than OreSpawn 5;
 - Java 8 to run Minecraft.
 
 Realistic Deposits is independent of the similarly themed Large Ore Deposits
 mod and does not require it.
 
-## Trying the development preview
+## Configuration
 
 Install Forge, OreSpawn, and Realistic Deposits in the usual `mods` directory.
 The first launch creates:
@@ -60,8 +55,35 @@ config/realisticdeposits/deposits/vanilla.json
 ```
 
 The supplied definition describes a rare iron formation using a long, thin,
-folded `stratiform_seam`. You can inspect the loaded configuration and preview
-deterministic candidates with:
+folded `stratiform_seam`. Deposits only affect newly generated chunks; the mod
+does not retrogen or rewrite an existing chunk.
+
+Every definition chooses one alignment mode:
+
+- `massive_rare` selects formations without requiring OreSpawn geology;
+- `geome_aligned` requires the formation centre to be in one of its configured
+  `geomes`;
+- `rock_aligned` also requires each output block to be in one of its configured
+  `rock_families`.
+
+Aligned candidates are safely rejected if the current dimension has no active
+OreSpawn geology sampler. The available families are `sedimentary`,
+`metamorphic`, `igneous_intrusive`, and `igneous_volcanic`.
+
+The `interaction` field controls ordinary generation for the same resource and
+dimension:
+
+- `additive` leaves it unchanged;
+- `hybrid` scales it to 25% by default, or to
+  `background_generation_scale` when specified;
+- `replacement` disables it while leaving the massive deposit active.
+
+Biome IDs and Forge biome-dictionary filters can be supplied with `biome_ids`,
+`excluded_biome_ids`, `biome_dictionary`, and
+`excluded_biome_dictionary`.
+
+Use the diagnostic commands to inspect the loaded catalog and preview planned
+formations:
 
 ```text
 /realisticdeposits status
@@ -69,15 +91,30 @@ deterministic candidates with:
 /realisticdeposits reload
 ```
 
-`reload` requires operator permission. These commands are diagnostic only in
-the current preview and never change world blocks.
+`reload` requires operator permission. It immediately applies `enabled`,
+selection, shape, height, geome, family, and alignment changes. Resource,
+dimension, host, biome-filter, interaction-policy, scale, added, and removed
+definition changes are structural and take effect after restart. New provider
+entries are deliberately not injected into a world profile that already
+exists.
 
-The configuration screen is also available from Forge's Mods list.
+The configuration screen is available from Forge's Mods list and OreSpawn's
+World Settings screen.
 
 ## Building from source
 
 The Gradle build runs on Java 17 and compiles the mod for Java 8 using the
-configured toolchain. On Windows, run:
+configured toolchain. Until OreSpawn 4.1.0 is published, development is pinned
+to its exact local release and mapped development jars. Point an ignored
+`local.properties` file at them:
+
+```properties
+orespawn.local.jar=D:/path/to/OreSpawn-4.1.0.110021.jar
+orespawn.local.deobf.jar=D:/path/to/OreSpawn-4.1.0.110021-deobf.jar
+```
+
+The build verifies both artifact hashes and has no fallback to OreSpawn 4.0.x.
+On Windows, run:
 
 ```powershell
 .\gradlew.bat clean check build

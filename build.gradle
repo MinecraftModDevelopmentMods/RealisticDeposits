@@ -31,6 +31,32 @@ if (versionParts[3] != expectedTarget) {
             + "Minecraft ${project.minecraft_version} ${project.loader_name} target ${expectedTarget}")
 }
 
+Properties localProperties = new Properties()
+File localPropertiesFile = file('local.properties')
+if (localPropertiesFile.isFile()) {
+    localPropertiesFile.withInputStream { localProperties.load(it) }
+}
+String oreSpawnLocalPath = System.getenv('ORESPAWN_LOCAL_JAR')
+        ?: localProperties.getProperty('orespawn.local.jar')
+if (oreSpawnLocalPath == null || oreSpawnLocalPath.trim().isEmpty()) {
+    throw new GradleException('Set ORESPAWN_LOCAL_JAR or orespawn.local.jar in ignored local.properties '
+            + 'to the exact local OreSpawn 4.1.0.110021 candidate')
+}
+File oreSpawnLocalJar = file(oreSpawnLocalPath).canonicalFile
+if (!oreSpawnLocalJar.isFile()) {
+    throw new GradleException("Local OreSpawn candidate does not exist: ${oreSpawnLocalJar}")
+}
+String oreSpawnLocalDeobfPath = System.getenv('ORESPAWN_LOCAL_DEOBF_JAR')
+        ?: localProperties.getProperty('orespawn.local.deobf.jar')
+if (oreSpawnLocalDeobfPath == null || oreSpawnLocalDeobfPath.trim().isEmpty()) {
+    throw new GradleException('Set ORESPAWN_LOCAL_DEOBF_JAR or orespawn.local.deobf.jar in ignored '
+            + 'local.properties to the matching mapped OreSpawn development jar')
+}
+File oreSpawnLocalDeobfJar = file(oreSpawnLocalDeobfPath).canonicalFile
+if (!oreSpawnLocalDeobfJar.isFile()) {
+    throw new GradleException("Mapped local OreSpawn candidate does not exist: ${oreSpawnLocalDeobfJar}")
+}
+
 java {
     toolchain.languageVersion = JavaLanguageVersion.of(8)
     withSourcesJar()
@@ -127,11 +153,6 @@ repositories {
     maven fg.minecraftLibsMaven
     mavenCentral()
     maven {
-        name = 'CurseMaven'
-        url = 'https://www.cursemaven.com'
-        content { includeGroup 'curse.maven' }
-    }
-    maven {
         name = 'MinecraftLibraries'
         url = 'https://libraries.minecraft.net/'
     }
@@ -140,13 +161,9 @@ repositories {
 dependencies {
     implementation minecraft.dependency(
             "net.minecraftforge:forge:${project.minecraft_version}-${project.forge_version}")
-    // Link only to OreSpawn's public packages; the dependency remains an
-    // ordinary external runtime mod and is never bundled into this jar.
-    // ForgeGradle 7's legacy target does not expose the later fg.deobf helper.
-    implementation("curse.maven:mmd-orespawn-${project.orespawn_curse_project_id}:"
-            + project.orespawn_curse_file_id) {
-        transitive = false
-    }
+    // Development is deliberately pinned to the exact local OreSpawn 4.1 API
+    // candidate. There is no fallback to a released 4.0.x artifact.
+    implementation files(oreSpawnLocalDeobfJar)
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.2'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.2'
@@ -326,8 +343,7 @@ tasks.register('verifyProjectIdentity') {
         }
         if (project.minecraft_version != '1.10.2'
                 || project.forge_version != '12.18.3.2511'
-                || project.orespawn_version != '4.0.16.110021'
-                || project.orespawn_curse_file_id != '8844528') {
+                || project.orespawn_version != '4.1.0.110021') {
             throw new GradleException('Unexpected target or OreSpawn dependency identity')
         }
         if (project.mod_version.toString().contains('-')) {
@@ -338,28 +354,30 @@ tasks.register('verifyProjectIdentity') {
 
 tasks.register('verifyOreSpawnDependency') {
     group = 'verification'
-    description = 'Verifies the exact released OreSpawn API/runtime and mapped development transformer.'
+    description = 'Verifies the exact local OreSpawn 4.1 API/runtime and mapped development transformer.'
     doLast {
-        def artifacts = configurations.runtimeClasspath.resolvedConfiguration.resolvedArtifacts
-        def oreSpawnArtifacts = artifacts.findAll { artifact ->
-            def id = artifact.moduleVersion.id
-            id.group == 'curse.maven' && id.name.startsWith('mmd-orespawn-')
-        }
-        if (oreSpawnArtifacts.size() != 1) {
-            throw new GradleException("Expected exactly one released OreSpawn artifact, found "
-                    + oreSpawnArtifacts.collect { it.moduleVersion.id })
-        }
-        File oreSpawnFile = oreSpawnArtifacts.first().file
+        File oreSpawnFile = oreSpawnLocalJar
         String actualHash = java.security.MessageDigest.getInstance('SHA-256')
                 .digest(oreSpawnFile.bytes).encodeHex().toString().toUpperCase()
         if (actualHash != project.orespawn_sha256) {
-            throw new GradleException("Released OreSpawn SHA-256 is ${actualHash}, expected "
+            throw new GradleException("Local OreSpawn SHA-256 is ${actualHash}, expected "
                     + project.orespawn_sha256)
+        }
+        String actualDeobfHash = java.security.MessageDigest.getInstance('SHA-256')
+                .digest(oreSpawnLocalDeobfJar.bytes).encodeHex().toString().toUpperCase()
+        if (actualDeobfHash != project.orespawn_deobf_sha256) {
+            throw new GradleException("Mapped local OreSpawn SHA-256 is ${actualDeobfHash}, expected "
+                    + project.orespawn_deobf_sha256)
         }
         java.util.zip.ZipFile archive = new java.util.zip.ZipFile(oreSpawnFile)
         try {
+            def apiEntry = archive.getEntry('zone/moddev/mc/orespawn/api/OreGenerationContext.class')
+            def providerEntry = archive.getEntry('zone/moddev/mc/orespawn/api/WorldgenProvider.class')
+            if (apiEntry == null || providerEntry == null) {
+                throw new GradleException('Local OreSpawn candidate is missing the 4.1 extension API')
+            }
             def entry = archive.getEntry('META-INF/accesstransformer.cfg')
-            if (entry == null) throw new GradleException('Released OreSpawn has no access transformer')
+            if (entry == null) throw new GradleException('Local OreSpawn has no access transformer')
             List<String> releasedRules = archive.getInputStream(entry).getText('UTF-8').readLines()
                     .findAll { !it.trim().isEmpty() }
             List<String> mappedRules = file('gradle/orespawn-development-access-transformer.cfg')
@@ -371,7 +389,7 @@ tasks.register('verifyOreSpawnDependency') {
                     'public-f net.minecraft.world.WorldProvider biomeProvider',
                     'public-f net.minecraft.world.gen.ChunkProviderOverworld oceanBlock'
             ]) {
-                throw new GradleException('OreSpawn development transformer no longer matches the release')
+                throw new GradleException('OreSpawn development transformer no longer matches the local candidate')
             }
         } finally {
             archive.close()
@@ -379,9 +397,9 @@ tasks.register('verifyOreSpawnDependency') {
     }
 }
 
-tasks.register('verifyAlphaArtifacts') {
+tasks.register('verifyReleaseArtifacts') {
     group = 'verification'
-    description = 'Audits the runnable alpha artifacts and their deliberate no-world-write boundary.'
+    description = 'Audits the functional release artifacts and dependency isolation.'
     dependsOn releaseJar
     dependsOn tasks.named('sourcesJar')
     dependsOn tasks.named('javadocJar')
@@ -406,7 +424,10 @@ tasks.register('verifyAlphaArtifacts') {
                     'zone/moddev/mc/realisticdeposits/RealisticDeposits.class',
                     'zone/moddev/mc/realisticdeposits/client/RealisticDepositsGuiFactory.class',
                     'zone/moddev/mc/realisticdeposits/command/RealisticDepositsCommand.class',
-                    'zone/moddev/mc/realisticdeposits/geometry/RegionDepositPlanner.class'
+                    'zone/moddev/mc/realisticdeposits/geometry/RegionDepositPlanner.class',
+                    'zone/moddev/mc/realisticdeposits/generation/StratiformSeamPattern.class',
+                    'zone/moddev/mc/realisticdeposits/integration/OreSpawnIntegration.class',
+                    'zone/moddev/mc/realisticdeposits/proxy/ClientProxy.class'
             ].each { required ->
                 if (!entries.contains(required)) throw new GradleException("Main jar is missing ${required}")
             }
@@ -427,8 +448,8 @@ tasks.register('verifyAlphaArtifacts') {
                     .getText('UTF-8')
             if (!metadata.contains('"version": "' + project.version + '"')
                     || metadata.contains('${version}')
-                    || !metadata.contains('World writes await public OreSpawn extension contracts')) {
-                throw new GradleException('Main jar metadata does not describe the exact alpha identity')
+                    || !metadata.contains('geologically aware ore deposits powered by MMD OreSpawn')) {
+                throw new GradleException('Main jar metadata does not describe the exact functional identity')
             }
             def manifestEntry = mainArchive.getEntry('META-INF/MANIFEST.MF')
             if (manifestEntry == null) throw new GradleException('Main jar has no manifest')
@@ -469,5 +490,5 @@ tasks.register('verifyAlphaArtifacts') {
 tasks.named('check') {
     dependsOn tasks.named('verifyProjectIdentity')
     dependsOn tasks.named('verifyOreSpawnDependency')
-    dependsOn tasks.named('verifyAlphaArtifacts')
+    dependsOn tasks.named('verifyReleaseArtifacts')
 }
