@@ -92,7 +92,9 @@ public final class StratiformSeamPattern {
 						x <= Math.min(chunkMaxX, bounds.maximumX()); x++) {
 					for (int z = Math.max(chunkMinZ, bounds.minimumZ());
 							z <= Math.min(chunkMaxZ, bounds.maximumZ()); z++) {
-						for (int y = bounds.minimumY(); y <= bounds.maximumY(); y++) {
+						int minimumY = body.minimumCandidateYAt(x, z);
+						int maximumY = body.maximumCandidateYAt(x, z);
+						for (int y = minimumY; y <= maximumY; y++) {
 							if (!body.isOreAt(x, y, z) || !context.inside(x, y, z)) continue;
 							if (definition.alignment() == AlignmentMode.ROCK_ALIGNED
 									&& !acceptsFamily(definition, sampler.get(), columns,
@@ -133,6 +135,6 @@ public final class StratiformSeamPattern {
 	private static int maximumHorizontalRadius(DepositDefinition definition) {
 		return (int) Math.ceil(definition.seam().strikeLength().maximum() * 0.5D
 				+ definition.seam().downDipWidth().maximum() * 0.5D
-				+ definition.seam().bendAmplitude() + 3.0D);
+				+ definition.seam().bendAmplitude() + 13.0D);
 	}
 }

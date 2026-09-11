@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.List;
@@ -92,22 +93,36 @@ class RegionDepositPlannerTest {
 	void defaultIronFormationContainsAMineScaleConnectedRun() {
 		DepositDefinition definition = new DepositDefinition(
 				"realisticdeposits:overworld_iron_formation", true, "minecraft:iron_ore",
-				AlignmentMode.MASSIVE_RARE, InteractionPolicy.ADDITIVE,
+				AlignmentMode.MASSIVE_RARE, InteractionPolicy.HYBRID,
 				Arrays.asList("minecraft:overworld"), Arrays.asList("minecraft:stone"),
-				8, 56, 32, 0.25D, 7146057694168187204L,
-				new StratiformSeamSettings(new IntRange(192, 384), new IntRange(48, 128),
-						1.5D, 5.0D, -35.0D, 35.0D, 18.0D, 144.0D,
-						8.0D, 96.0D, 0.18D, 0.2D));
+				Collections.emptySet(), Collections.emptySet(), Collections.emptySet(),
+				Collections.emptySet(), Collections.emptySet(), Collections.emptySet(), 0.15D,
+				4, 120, 64, 0.25D, 7146057694168187204L,
+				new StratiformSeamSettings(new IntRange(640, 960), new IntRange(160, 240),
+						3.0D, 8.0D, 10.0D, 22.0D, 32.0D, 240.0D,
+						12.0D, 180.0D, 0.12D, 0.18D));
 		StratiformSeamBody body = RegionDepositPlanner.plan(definition,
 				3346071746553592696L, "minecraft:overworld", -1, -1).get();
 		Set<Long> ore = orePositions(body);
 		List<Integer> components = componentSizes(ore);
 		int largest = components.stream().mapToInt(Integer::intValue).max().orElse(0);
+		components.sort(Collections.reverseOrder());
+		double minimumAlong = Double.POSITIVE_INFINITY;
+		double maximumAlong = Double.NEGATIVE_INFINITY;
+		for (long position : ore) {
+			double along = body.localAlongAt(unpackX(position), unpackZ(position));
+			minimumAlong = Math.min(minimumAlong, along);
+			maximumAlong = Math.max(maximumAlong, along);
+		}
 
-		assertTrue(largest >= body.strikeLength() * 3,
+		assertTrue(ore.size() >= 150000 && ore.size() <= 180000,
+				"planned major district size was " + ore.size());
+		assertTrue(largest >= 30000,
 				"largest run was only " + largest + " blocks for strike " + body.strikeLength());
-		assertTrue(largest * 8 >= ore.size(),
-				"connected core is too small relative to the complete orebody");
+		assertTrue(components.size() >= 3 && components.get(2) >= 10000,
+				"major district did not contain three substantial fault-separated sections");
+		assertTrue(maximumAlong - minimumAlong >= 640.0D,
+				"combined haulage extent did not span 640 blocks");
 	}
 
 	@Test

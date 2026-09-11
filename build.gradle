@@ -241,7 +241,21 @@ tasks.register('isolateEclipseProductionRuns') {
     dependsOn tasks.named('configureEclipseBuildship')
     dependsOn prepareEclipseResources
     doLast {
+        [['runClient.launch', 'runMajorIronClient.launch'],
+         ['runServer.launch', 'runMajorIronServer.launch']].each { pair ->
+            File source = file(pair[0])
+            File target = file(pair[1])
+            if (!source.isFile()) {
+                throw new GradleException("ForgeGradle did not generate ${pair[0]}")
+            }
+            String contents = source.getText('UTF-8')
+            contents = contents.replaceAll(
+                    /(<stringAttribute key="org\.eclipse\.jdt\.launching\.WORKING_DIRECTORY" value=")[^"]*("\/>)/,
+                    '$1' + file('run-major-iron').absolutePath.replace('\\', '\\\\') + '$2')
+            target.setText(contents.replace('\r\n', '\n'), 'UTF-8')
+        }
         ['runClient.launch', 'runServer.launch',
+         'runMajorIronClient.launch', 'runMajorIronServer.launch',
          'runTestClient.launch', 'runTestServer.launch'].each { name ->
             File launch = file(name)
             if (!launch.isFile()) {
@@ -276,7 +290,8 @@ tasks.register('isolateEclipseProductionRuns') {
             contents = contents.replace(programArguments[0][0],
                     programArguments[0][1] + arguments + programArguments[0][3])
 
-            if ((name == 'runClient.launch' || name == 'runServer.launch')
+            if ((name == 'runClient.launch' || name == 'runServer.launch'
+                    || name == 'runMajorIronClient.launch' || name == 'runMajorIronServer.launch')
                     && !contents.contains('org.eclipse.jdt.launching.ATTR_EXCLUDE_TEST_CODE')) {
                 contents = contents.replace('</launchConfiguration>',
                         '  <booleanAttribute key="org.eclipse.jdt.launching.ATTR_EXCLUDE_TEST_CODE" value="true"/>\n'
@@ -302,7 +317,8 @@ tasks.register('verifyEclipseProductionClasspath') {
                 || metadata.contains('${version}')) {
             throw new GradleException('Eclipse metadata is not version-expanded')
         }
-        ['runClient.launch', 'runServer.launch'].each { name ->
+        ['runClient.launch', 'runServer.launch',
+         'runMajorIronClient.launch', 'runMajorIronServer.launch'].each { name ->
             String contents = file(name).getText('UTF-8').replace('\\', '/')
             ['src/test', 'bin/test', 'build/classes/java/test', 'junit-',
              'opentest4j-', 'junit-platform-'].each { forbidden ->
@@ -314,12 +330,17 @@ tasks.register('verifyEclipseProductionClasspath') {
                     || !contents.contains('PROJECT_ATTR" value="RealisticDeposits"')) {
                 throw new GradleException("${name} is not a production-only RealisticDeposits launch")
             }
-            if (name == 'runServer.launch'
+            if ((name == 'runServer.launch' || name == 'runMajorIronServer.launch')
                     && (!contents.contains(' -- nogui"') || contents.contains('--nogui'))) {
                 throw new GradleException('Forge 1.10 server launch must use bare nogui')
             }
+            if (name.startsWith('runMajorIron')
+                    && !contents.contains('run-major-iron')) {
+                throw new GradleException("${name} does not use the isolated major-iron directory")
+            }
         }
         ['runClient.launch', 'runServer.launch',
+         'runMajorIronClient.launch', 'runMajorIronServer.launch',
          'runTestClient.launch', 'runTestServer.launch'].each { name ->
             String contents = file(name).getText('UTF-8')
             ['cache', 'metadata', 'to-srg', 'to-obf'].each { flag ->

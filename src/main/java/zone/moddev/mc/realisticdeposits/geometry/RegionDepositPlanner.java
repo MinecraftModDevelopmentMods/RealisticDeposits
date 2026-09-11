@@ -26,19 +26,26 @@ public final class RegionDepositPlanner {
 		int regionOriginZ = multiplyExact(regionZ, regionBlocks);
 		int centerX = regionOriginX + random.nextInt(regionBlocks);
 		int centerZ = regionOriginZ + random.nextInt(regionBlocks);
-		int centerY = definition.minimumY()
-				+ random.nextInt(definition.maximumY() - definition.minimumY() + 1);
 		StratiformSeamSettings settings = definition.seam();
 		int strikeLength = settings.strikeLength().sample(random);
 		int downDipWidth = settings.downDipWidth().sample(random);
 		double strike = random.nextDouble() * Math.PI * 2.0D;
 		double dip = between(random, settings.minimumDipDegrees(), settings.maximumDipDegrees());
+		StratiformSeamBody.StructureLayout structure = StratiformSeamBody.createStructure(
+				identity, strikeLength, downDipWidth, settings);
+		int verticalRadius = StratiformSeamBody.requiredVerticalRadius(dip, downDipWidth,
+				settings, structure);
+		int fittedMinimum = definition.minimumY() + verticalRadius;
+		int fittedMaximum = definition.maximumY() - verticalRadius;
+		int centerY = fittedMinimum <= fittedMaximum
+				? fittedMinimum + random.nextInt(fittedMaximum - fittedMinimum + 1)
+				: Math.max(definition.minimumY(), fittedMaximum);
 		return Optional.of(new StratiformSeamBody(identity, centerX, centerY, centerZ,
 				strikeLength, downDipWidth, strike, dip, settings,
 				random.nextDouble() * Math.PI * 2.0D,
 				random.nextDouble() * Math.PI * 2.0D,
 				random.nextDouble() * Math.PI * 2.0D,
-				definition.minimumY(), definition.maximumY()));
+				definition.minimumY(), definition.maximumY(), structure));
 	}
 
 	private static int multiplyExact(int left, int right) {

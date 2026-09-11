@@ -31,9 +31,11 @@ class DepositCatalogLoaderTest {
 				catalog.definitions().get(0).id());
 		assertEquals("minecraft:iron_ore", catalog.definitions().get(0).resource());
 		assertEquals(AlignmentMode.MASSIVE_RARE, catalog.definitions().get(0).alignment());
-		assertEquals(InteractionPolicy.ADDITIVE, catalog.definitions().get(0).interaction());
-		assertEquals(192, catalog.definitions().get(0).seam().strikeLength().minimum());
-		assertEquals(384, catalog.definitions().get(0).seam().strikeLength().maximum());
+		assertEquals(InteractionPolicy.HYBRID, catalog.definitions().get(0).interaction());
+		assertEquals(0.15D, catalog.definitions().get(0)
+				.effectiveBackgroundGenerationScale().getAsDouble());
+		assertEquals(640, catalog.definitions().get(0).seam().strikeLength().minimum());
+		assertEquals(960, catalog.definitions().get(0).seam().strikeLength().maximum());
 		assertTrue(catalog.warnings().isEmpty());
 	}
 

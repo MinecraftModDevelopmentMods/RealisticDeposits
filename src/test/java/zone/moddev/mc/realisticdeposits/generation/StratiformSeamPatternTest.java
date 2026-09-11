@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
@@ -111,22 +113,68 @@ class StratiformSeamPatternTest {
 
 	@Test
 	void sparseNegativeEdgeChunkRetainsEveryPlannedPosition() {
-		DepositDefinition definition = new DepositDefinition(
-				"realisticdeposits:overworld_iron_formation", true, "minecraft:iron_ore",
-				AlignmentMode.MASSIVE_RARE, InteractionPolicy.ADDITIVE,
-				Collections.singleton("minecraft:overworld"), Collections.singleton("minecraft:stone"),
-				8, 56, 32, 0.25D, 7146057694168187204L,
-				new StratiformSeamSettings(new IntRange(192, 384), new IntRange(48, 128),
-						1.5D, 5.0D, -35.0D, 35.0D, 18.0D, 144.0D,
-						8.0D, 96.0D, 0.18D, 0.2D));
-		long savedWorldSeed = 3346071746553592696L;
-		RecordingContext context = new RecordingContext(-19, -2, Optional.empty(), savedWorldSeed);
+		DepositDefinition definition = definition(AlignmentMode.MASSIVE_RARE,
+				Collections.emptySet(), Collections.emptySet());
+		StratiformSeamBody body = RegionDepositPlanner.plan(definition, SEED,
+				"minecraft:overworld", -1, -1).get();
+		BlockBounds bounds = body.bounds();
+		int selectedChunkX = Integer.MIN_VALUE;
+		int selectedChunkZ = Integer.MIN_VALUE;
+		Set<String> expected = new HashSet<>();
+		for (int chunkX = Math.floorDiv(bounds.minimumX(), 16);
+				chunkX <= Math.floorDiv(bounds.maximumX(), 16) && expected.isEmpty(); chunkX++) {
+			for (int chunkZ = Math.floorDiv(bounds.minimumZ(), 16);
+					chunkZ <= Math.floorDiv(bounds.maximumZ(), 16) && expected.isEmpty(); chunkZ++) {
+				for (int x = Math.max(bounds.minimumX(), chunkX << 4);
+						x <= Math.min(bounds.maximumX(), (chunkX << 4) + 15); x++) {
+					for (int z = Math.max(bounds.minimumZ(), chunkZ << 4);
+							z <= Math.min(bounds.maximumZ(), (chunkZ << 4) + 15); z++) {
+						for (int y = body.minimumCandidateYAt(x, z);
+								y <= body.maximumCandidateYAt(x, z); y++) {
+							if (body.isOreAt(x, y, z)) expected.add(x + "," + y + "," + z);
+						}
+					}
+				}
+				if (!expected.isEmpty()) {
+					selectedChunkX = chunkX;
+					selectedChunkZ = chunkZ;
+				}
+			}
+		}
+		assertFalse(expected.isEmpty());
+		RecordingContext context = new RecordingContext(selectedChunkX, selectedChunkZ,
+				Optional.empty(), SEED);
 
 		assertTrue(StratiformSeamPattern.place(definition, context));
-		assertTrue(context.placed.contains("-304,33,-26"));
-		assertTrue(context.placed.contains("-301,33,-23"));
-		assertTrue(context.placed.contains("-300,33,-18"));
-		assertTrue(context.placed.contains("-301,36,-19"));
+		assertTrue(context.placed.containsAll(expected));
+	}
+
+	@Test
+	void placementRespectsHostSafetyForEveryUnsafeState() {
+		DepositDefinition definition = definition(AlignmentMode.MASSIVE_RARE,
+				Collections.emptySet(), Collections.emptySet());
+		StratiformSeamBody body = RegionDepositPlanner.plan(definition, SEED,
+				"minecraft:overworld", 0, 0).get();
+		RecordingContext context = context(body, Optional.empty());
+		String[] labels = { "air", "liquid", "bedrock", "block_entity", "undeclared_host" };
+		int label = 0;
+		int chunkMinX = context.chunkX << 4;
+		int chunkMinZ = context.chunkZ << 4;
+		for (int x = chunkMinX; x <= chunkMinX + 15 && label < labels.length; x++) {
+			for (int z = chunkMinZ; z <= chunkMinZ + 15 && label < labels.length; z++) {
+				for (int y = body.minimumCandidateYAt(x, z);
+						y <= body.maximumCandidateYAt(x, z) && label < labels.length; y++) {
+					if (body.isOreAt(x, y, z)) {
+						context.reject(x + "," + y + "," + z, labels[label++]);
+					}
+				}
+			}
+		}
+		assertEquals(labels.length, label);
+
+		assertTrue(StratiformSeamPattern.place(definition, context));
+		assertEquals(new HashSet<>(Arrays.asList(labels)), context.rejectedKinds);
+		assertTrue(Collections.disjoint(context.placed, context.rejected.keySet()));
 	}
 
 	private static Set<String> render(DepositDefinition definition, int minChunkX, int maxChunkX,
@@ -169,6 +217,8 @@ class StratiformSeamPatternTest {
 		private final Optional<GeologySampler> sampler;
 		private final long worldSeed;
 		private final Set<String> placed = new HashSet<>();
+		private final Map<String, String> rejected = new LinkedHashMap<>();
+		private final Set<String> rejectedKinds = new HashSet<>();
 
 		private RecordingContext(int chunkX, int chunkZ, Optional<GeologySampler> sampler) {
 			this(chunkX, chunkZ, sampler, SEED);
@@ -204,8 +254,15 @@ class StratiformSeamPatternTest {
 		@Override public boolean isFluid(int x, int y, int z, Fluid fluid) { return false; }
 		@Override public boolean tryPlace(int x, int y, int z) {
 			if (!inside(x, y, z)) return false;
-			return placed.add(x + "," + y + "," + z);
+			String coordinate = x + "," + y + "," + z;
+			String rejectedKind = rejected.get(coordinate);
+			if (rejectedKind != null) {
+				rejectedKinds.add(rejectedKind);
+				return false;
+			}
+			return placed.add(coordinate);
 		}
+		private void reject(String coordinate, String kind) { rejected.put(coordinate, kind); }
 	}
 
 	private static final class TestSampler implements GeologySampler {

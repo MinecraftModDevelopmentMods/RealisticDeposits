@@ -18,9 +18,11 @@ maintained OreSpawn branches across Forge and NeoForge.
 - Rare, region-scale deposits that remain identical regardless of chunk
   generation order.
 - Long, folded `stratiform_seam` formations instead of enlarged spherical ore
-  blobs. Connected trunks and oblique branches create followable mine-scale
-  runs, while a lower-grade halo leaves smaller satellite pockets. Each chunk
-  writes only its own deterministic part of a deposit.
+  blobs. The experimental iron default is a major mining district with an
+  irregular principal horizon, five to seven splays, two or three subparallel
+  lenses, and short fault displacements. A sparse halo gives prospecting clues
+  around the fault gaps instead of making the displaced ore impossible to
+  rediscover. Each chunk writes only its own deterministic part of a deposit.
 - Massive-and-rare, geome-aware, and host-rock-aware generation modes.
 - Additive, hybrid, and replacement policies for controlling interaction with
   ordinary ore generation.
@@ -56,11 +58,17 @@ The first launch creates:
 config/realisticdeposits/deposits/vanilla.json
 ```
 
-The supplied definition describes a rare iron formation using a long, thin,
-folded `stratiform_seam`. Its `density` controls the disseminated halo and the
-width of the connected mineralized ribbons rather than producing a uniformly
-random cloud. Deposits only affect newly generated chunks; the mod does not
-retrogen or rewrite an existing chunk.
+The supplied definition describes one rare iron district using a 640–960 block
+folded horizon, a 160–240 block down-dip span, and a 3–8 block thickness. Its
+`density` controls the disseminated halo around the connected mineralized
+routes rather than producing a uniformly random cloud. Two or three faults
+introduce short, recoverable breaks and modest vertical or lateral offsets.
+The shipped iron definition uses `hybrid` interaction with 15% background iron
+so early play remains viable while a discovered district can support a
+long-lived mine and rail network.
+
+Deposits only affect newly generated chunks. Changing these settings does not
+retrogen, replace, or rewrite an existing chunk.
 
 Every definition chooses one alignment mode:
 
