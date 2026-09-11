@@ -161,6 +161,13 @@ repositories {
 dependencies {
     implementation minecraft.dependency(
             "net.minecraftforge:forge:${project.minecraft_version}-${project.forge_version}")
+    // Slime Launcher contributes the vanilla 1.10 manifest's LWJGL 2.9.1
+    // libraries ahead of ForgeGradle's selected 2.9.4 runtime unless the
+    // target LWJGL line is also a direct Eclipse project dependency. The red
+    // launch loaded that older core immediately before the 256x256 panorama
+    // viewport/GL 1281 failure. Keep this aligned with the green OreSpawn and
+    // Mineralogy 1.10 launches.
+    compileOnly 'org.lwjgl.lwjgl:lwjgl_util:2.9.4-nightly-20150209'
     // Development is deliberately pinned to the exact local OreSpawn 4.1 API
     // candidate. There is no fallback to a released 4.0.x artifact.
     implementation files(oreSpawnLocalDeobfJar)
@@ -282,6 +289,7 @@ tasks.register('verifyEclipseProductionClasspath') {
     group = 'verification'
     description = 'Verifies ordinary Eclipse launches and processed resources.'
     dependsOn tasks.named('isolateEclipseProductionRuns')
+    dependsOn tasks.named('verifyLegacyClientClasspath')
     doLast {
         File processedMetadata = file('bin/main/mcmod.info')
         if (!processedMetadata.isFile()) {
@@ -387,6 +395,33 @@ tasks.register('verifyProjectIdentity') {
         }
         if (project.mod_version.toString().contains('-')) {
             throw new GradleException('Version qualifiers are forbidden by the shared numeric policy')
+        }
+    }
+}
+
+tasks.register('verifyLegacyClientClasspath') {
+    group = 'verification'
+    description = 'Guards the target LWJGL line used by legacy Eclipse client launches.'
+    doLast {
+        String expectedVersion = '2.9.4-nightly-20150209'
+        def directLwjgl = configurations.compileOnly.dependencies.findAll {
+            it.group == 'org.lwjgl.lwjgl' && it.name == 'lwjgl_util'
+        }
+        if (directLwjgl.size() != 1 || directLwjgl[0].version != expectedVersion) {
+            throw new GradleException('Eclipse requires one direct lwjgl_util 2.9.4-nightly dependency')
+        }
+
+        def resolved = configurations.compileClasspath.resolvedConfiguration.resolvedArtifacts
+                .findAll { it.moduleVersion.id.group == 'org.lwjgl.lwjgl' }
+                .collect { "${it.name}:${it.moduleVersion.id.version}" }
+                .toSet()
+        ['lwjgl', 'lwjgl_util', 'lwjgl-platform'].each { module ->
+            if (!resolved.contains("${module}:${expectedVersion}")) {
+                throw new GradleException("Compile classpath does not select ${module}:${expectedVersion}: ${resolved}")
+            }
+        }
+        if (resolved.any { !it.endsWith(":${expectedVersion}") }) {
+            throw new GradleException("Compile classpath contains a conflicting LWJGL line: ${resolved}")
         }
     }
 }
@@ -528,6 +563,7 @@ tasks.register('verifyReleaseArtifacts') {
 
 tasks.named('check') {
     dependsOn tasks.named('verifyProjectIdentity')
+    dependsOn tasks.named('verifyLegacyClientClasspath')
     dependsOn tasks.named('verifyOreSpawnDependency')
     dependsOn tasks.named('verifyReleaseArtifacts')
 }
