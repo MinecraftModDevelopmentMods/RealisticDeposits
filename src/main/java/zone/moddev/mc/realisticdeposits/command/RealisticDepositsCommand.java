@@ -54,7 +54,8 @@ public final class RealisticDepositsCommand extends CommandBase {
 		sender.sendMessage(new TextComponentString("Realistic Deposits " + RealisticDeposits.VERSION
 				+ ": catalogs=" + state.catalogs().size() + ", definitions="
 				+ state.definitions().size() + ", generation="
-				+ state.integrationStatus().name().toLowerCase()));
+				+ state.integrationStatus().name().toLowerCase() + ", deferred_structural="
+				+ state.deferredStructuralChanges().size()));
 	}
 
 	private static void preview(ICommandSender sender, String[] args) throws CommandException {
@@ -80,7 +81,7 @@ public final class RealisticDepositsCommand extends CommandBase {
 				+ "; strike=" + body.strikeLength() + ", down-dip=" + body.downDipWidth()
 				+ "; bounds=" + bounds.minimumX() + "," + bounds.minimumY() + ","
 				+ bounds.minimumZ() + " to " + bounds.maximumX() + "," + bounds.maximumY()
-				+ "," + bounds.maximumZ() + ". Preview only; no blocks were changed."));
+				+ "," + bounds.maximumZ() + ". Preview does not change blocks."));
 	}
 
 	private static DepositDefinition selectDefinition(RuntimeState state, String id)

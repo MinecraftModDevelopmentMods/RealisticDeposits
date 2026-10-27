@@ -1,6 +1,7 @@
 package zone.moddev.mc.realisticdeposits.client;
 
 import java.io.IOException;
+import java.util.List;
 
 import zone.moddev.mc.realisticdeposits.RealisticDeposits;
 import zone.moddev.mc.realisticdeposits.config.RealisticDepositsRuntime;
@@ -10,7 +11,7 @@ import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.resources.I18n;
 
-/** Read-only alpha configuration summary with an explicit reload action. */
+/** Configuration summary with live geometry/alignment reload. */
 public final class RealisticDepositsConfigScreen extends GuiScreen {
 	private static final int DONE = 0;
 	private static final int RELOAD = 1;
@@ -25,9 +26,13 @@ public final class RealisticDepositsConfigScreen extends GuiScreen {
 	public void initGui() {
 		buttonList.clear();
 		int y = height - 32;
-		buttonList.add(new GuiButton(RELOAD, width / 2 - 154, y, 150, 20,
+		int contentWidth = contentWidth(width);
+		int gap = 8;
+		int buttonWidth = Math.min(150, (contentWidth - gap) / 2);
+		int left = (width - (buttonWidth * 2 + gap)) / 2;
+		buttonList.add(new GuiButton(RELOAD, left, y, buttonWidth, 20,
 				I18n.format("button.realisticdeposits.reload")));
-		buttonList.add(new GuiButton(DONE, width / 2 + 4, y, 150, 20,
+		buttonList.add(new GuiButton(DONE, left + buttonWidth + gap, y, buttonWidth, 20,
 				I18n.format("gui.done")));
 	}
 
@@ -49,26 +54,64 @@ public final class RealisticDepositsConfigScreen extends GuiScreen {
 	public void drawScreen(int mouseX, int mouseY, float partialTicks) {
 		drawDefaultBackground();
 		RuntimeState state = RealisticDepositsRuntime.state();
-		drawCenteredString(fontRendererObj, I18n.format("screen.realisticdeposits.title"), width / 2, 24, 0xFFFFFF);
+		int contentWidth = contentWidth(width);
+		int y = 18;
+		drawCenteredString(fontRendererObj, I18n.format("screen.realisticdeposits.title"),
+				width / 2, y, 0xFFFFFF);
+		y += 24;
 		drawCenteredString(fontRendererObj, "Version " + RealisticDeposits.VERSION,
-				width / 2, 48, 0xA0A0A0);
-		drawCenteredString(fontRendererObj, I18n.format("screen.realisticdeposits.loaded",
-				state.catalogs().size(), state.definitions().size()), width / 2, 72, 0xFFFFFF);
-		drawCenteredString(fontRendererObj, I18n.format("screen.realisticdeposits.alpha_status"),
-				width / 2, 96, 0xFFD080);
-		drawCenteredString(fontRendererObj, I18n.format("screen.realisticdeposits.worldgen_disabled"),
-				width / 2, 112, 0xFFD080);
-		drawCenteredString(fontRendererObj, I18n.format("screen.realisticdeposits.orespawn_ui_pending"),
-				width / 2, 136, 0xA0A0A0);
+				width / 2, y, 0xA0A0A0);
+		y += 22;
+		y = drawWrappedCentered(I18n.format("screen.realisticdeposits.loaded",
+				state.catalogs().size(), state.definitions().size()), y, contentWidth, 0xFFFFFF);
+		y += 8;
+		y = drawWrappedCentered(I18n.format("screen.realisticdeposits.generation_status",
+				state.integrationStatus().name().toLowerCase()), y, contentWidth, 0xFFD080);
+		y += 4;
+		y = drawWrappedCentered(I18n.format("screen.realisticdeposits.reload_policy"),
+				y, contentWidth, 0xFFD080);
+		y += 8;
+		y = drawWrappedCentered(I18n.format("screen.realisticdeposits.orespawn_ui"),
+				y, contentWidth, 0xA0A0A0);
 		if (state.configRoot() != null) {
-			drawCenteredString(fontRendererObj, trim(state.configRoot().getPath(), 90),
-					width / 2, 164, 0x808080);
+			y += 8;
+			drawCenteredString(fontRendererObj,
+					trimToWidth(state.configRoot().getPath(), contentWidth),
+					width / 2, y, 0x808080);
+			y += 10;
 		}
-		if (!message.isEmpty()) drawCenteredString(fontRendererObj, message, width / 2, 188, 0xFFFFFF);
+		if (!message.isEmpty()) {
+			List<String> lines = fontRendererObj.listFormattedStringToWidth(message, contentWidth);
+			int messageY = Math.min(y + 8, height - 42 - lines.size() * 10);
+			drawWrappedCentered(lines, messageY, 0xFFFFFF);
+		}
 		super.drawScreen(mouseX, mouseY, partialTicks);
 	}
 
-	private static String trim(String value, int length) {
-		return value.length() <= length ? value : "..." + value.substring(value.length() - length + 3);
+	private int drawWrappedCentered(String value, int y, int maximumWidth, int color) {
+		return drawWrappedCentered(fontRendererObj.listFormattedStringToWidth(value, maximumWidth), y, color);
+	}
+
+	private int drawWrappedCentered(List<String> lines, int y, int color) {
+		for (String line : lines) {
+			drawCenteredString(fontRendererObj, line, width / 2, y, color);
+			y += 10;
+		}
+		return y;
+	}
+
+	private String trimToWidth(String value, int maximumWidth) {
+		if (fontRendererObj.getStringWidth(value) <= maximumWidth) return value;
+		String prefix = "...";
+		int start = 0;
+		while (start < value.length()
+				&& fontRendererObj.getStringWidth(prefix + value.substring(start)) > maximumWidth) {
+			start++;
+		}
+		return prefix + value.substring(start);
+	}
+
+	static int contentWidth(int screenWidth) {
+		return Math.min(390, Math.max(120, screenWidth - 32));
 	}
 }

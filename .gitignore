@@ -22,6 +22,8 @@
 /logs/
 /*.log
 /mcmodsrepo/
+__pycache__/
+*.py[cod]
 
 AGENTS.md
 AGENT.md
@@ -29,6 +31,17 @@ agent-notes/
 .agent/
 .agents/
 .codex/
+.claude/
+.gemini/
+CLAUDE.md
+GEMINI.md
+**/*agent-report*
+**/*codex-report*
+**/*agent-notes*
+**/crash-reports/
+**/hs_err_pid*.log
+**/*.jfr
+**/*.hprof
 /evidence/
 /evidence-*/
 /*-evidence/
@@ -42,5 +55,7 @@ agent-notes/
 # Local secrets and dependency mirrors
 /secret.json
 /libs/
+/local.properties
+/.verification-*/
 
 .DS_Store

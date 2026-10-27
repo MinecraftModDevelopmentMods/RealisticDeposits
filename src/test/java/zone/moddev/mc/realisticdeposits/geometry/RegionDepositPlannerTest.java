@@ -5,8 +5,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Deque;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
@@ -85,6 +90,42 @@ class RegionDepositPlannerTest {
 	}
 
 	@Test
+	void defaultIronFormationContainsAMineScaleConnectedRun() {
+		DepositDefinition definition = new DepositDefinition(
+				"realisticdeposits:overworld_iron_formation", true, "minecraft:iron_ore",
+				AlignmentMode.MASSIVE_RARE, InteractionPolicy.HYBRID,
+				Arrays.asList("minecraft:overworld"), Arrays.asList("minecraft:stone"),
+				Collections.emptySet(), Collections.emptySet(), Collections.emptySet(),
+				Collections.emptySet(), Collections.emptySet(), Collections.emptySet(), 0.15D,
+				4, 120, 64, 0.25D, 7146057694168187204L,
+				new StratiformSeamSettings(new IntRange(640, 960), new IntRange(160, 240),
+						3.0D, 8.0D, 10.0D, 22.0D, 32.0D, 240.0D,
+						12.0D, 180.0D, 0.12D, 0.18D));
+		StratiformSeamBody body = RegionDepositPlanner.plan(definition,
+				3346071746553592696L, "minecraft:overworld", -1, -1).get();
+		Set<Long> ore = orePositions(body);
+		List<Integer> components = componentSizes(ore);
+		int largest = components.stream().mapToInt(Integer::intValue).max().orElse(0);
+		components.sort(Collections.reverseOrder());
+		double minimumAlong = Double.POSITIVE_INFINITY;
+		double maximumAlong = Double.NEGATIVE_INFINITY;
+		for (long position : ore) {
+			double along = body.localAlongAt(unpackX(position), unpackZ(position));
+			minimumAlong = Math.min(minimumAlong, along);
+			maximumAlong = Math.max(maximumAlong, along);
+		}
+
+		assertTrue(ore.size() >= 150000 && ore.size() <= 180000,
+				"planned major district size was " + ore.size());
+		assertTrue(largest >= 30000,
+				"largest run was only " + largest + " blocks for strike " + body.strikeLength());
+		assertTrue(components.size() >= 3 && components.get(2) >= 10000,
+				"major district did not contain three substantial fault-separated sections");
+		assertTrue(maximumAlong - minimumAlong >= 640.0D,
+				"combined haulage extent did not span 640 blocks");
+	}
+
+	@Test
 	void bodyNeverEscapesConfiguredHeightAndTapersAtItsEdges() {
 		StratiformSeamBody body = RegionDepositPlanner.plan(definition(1.0D), 7L,
 				"minecraft:overworld", 0, 0).get();
@@ -138,6 +179,68 @@ class RegionDepositPlannerTest {
 			}
 		}
 		return hash;
+	}
+
+	private static Set<Long> orePositions(StratiformSeamBody body) {
+		Set<Long> result = new HashSet<>();
+		BlockBounds bounds = body.bounds();
+		for (int x = bounds.minimumX(); x <= bounds.maximumX(); x++) {
+			for (int z = bounds.minimumZ(); z <= bounds.maximumZ(); z++) {
+				for (int y = bounds.minimumY(); y <= bounds.maximumY(); y++) {
+					if (body.isOreAt(x, y, z)) result.add(pack(x, y, z));
+				}
+			}
+		}
+		return result;
+	}
+
+	private static List<Integer> componentSizes(Set<Long> positions) {
+		Set<Long> remaining = new HashSet<>(positions);
+		List<Integer> result = new ArrayList<>();
+		Deque<Long> pending = new ArrayDeque<>();
+		while (!remaining.isEmpty()) {
+			long start = remaining.iterator().next();
+			remaining.remove(start);
+			pending.add(start);
+			int size = 0;
+			while (!pending.isEmpty()) {
+				long packed = pending.removeFirst();
+				size++;
+				int x = unpackX(packed);
+				int y = unpackY(packed);
+				int z = unpackZ(packed);
+				visit(remaining, pending, x - 1, y, z);
+				visit(remaining, pending, x + 1, y, z);
+				visit(remaining, pending, x, y - 1, z);
+				visit(remaining, pending, x, y + 1, z);
+				visit(remaining, pending, x, y, z - 1);
+				visit(remaining, pending, x, y, z + 1);
+			}
+			result.add(size);
+		}
+		return result;
+	}
+
+	private static void visit(Set<Long> remaining, Deque<Long> pending, int x, int y, int z) {
+		long packed = pack(x, y, z);
+		if (remaining.remove(packed)) pending.addLast(packed);
+	}
+
+	private static long pack(int x, int y, int z) {
+		return ((long) (x & 0x3FFFFFF) << 38) | ((long) (z & 0x3FFFFFF) << 12)
+				| (long) (y & 0xFFF);
+	}
+
+	private static int unpackX(long packed) {
+		return (int) (packed >> 38);
+	}
+
+	private static int unpackY(long packed) {
+		return (int) (packed << 52 >> 52);
+	}
+
+	private static int unpackZ(long packed) {
+		return (int) (packed << 26 >> 38);
 	}
 
 	private static DepositDefinition definition(double chance) {

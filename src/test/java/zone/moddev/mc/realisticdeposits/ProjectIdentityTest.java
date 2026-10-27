@@ -3,6 +3,12 @@ package zone.moddev.mc.realisticdeposits;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Properties;
+
 import org.junit.jupiter.api.Test;
 
 class ProjectIdentityTest {
@@ -10,8 +16,26 @@ class ProjectIdentityTest {
 	void usesStablePublicIdentity() {
 		assertEquals("realisticdeposits", RealisticDeposits.MOD_ID);
 		assertEquals("Realistic Deposits", RealisticDeposits.NAME);
-		assertEquals("0.1.0.110021", RealisticDeposits.VERSION);
-		assertTrue(RealisticDeposits.class.getAnnotation(net.minecraftforge.fml.common.Mod.class)
-				.guiFactory().endsWith("RealisticDepositsGuiFactory"));
+		assertEquals("0.1.1.110021", RealisticDeposits.VERSION);
+		net.minecraftforge.fml.common.Mod annotation = RealisticDeposits.class.getAnnotation(
+				net.minecraftforge.fml.common.Mod.class);
+		assertTrue(annotation.guiFactory().endsWith("RealisticDepositsGuiFactory"));
+		assertEquals("required-after:orespawn@[4.1.3.110021,5.0.0)", annotation.dependencies());
+	}
+
+	@Test
+	void pinsThePublishedOreSpawnRelease() throws IOException {
+		Properties properties = new Properties();
+
+		try (InputStream input = Files.newInputStream(Paths.get("gradle.properties"))) {
+			properties.load(input);
+		}
+
+		assertEquals("4.1.3.110021", properties.getProperty("orespawn_version"));
+		assertEquals("[4.1.3.110021,5.0.0)", properties.getProperty("orespawn_version_range"));
+		assertEquals("245586", properties.getProperty("orespawn_curse_project_id"));
+		assertEquals("9335434", properties.getProperty("orespawn_curse_file_id"));
+		assertEquals("FA1F4CAE66374E32162EC9543FF2BFBA236934C9E44D3F6AD882BC00761C15EF",
+				properties.getProperty("orespawn_sha256"));
 	}
 }

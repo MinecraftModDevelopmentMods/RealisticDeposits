@@ -2,6 +2,10 @@ package zone.moddev.mc.realisticdeposits.model;
 
 import java.util.Objects;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
+
 /** Bounded shape and grade settings for a folded, laterally extensive seam. */
 public final class StratiformSeamSettings {
 	private final IntRange strikeLength;
@@ -61,6 +65,29 @@ public final class StratiformSeamSettings {
 	public double foldWavelength() { return foldWavelength; }
 	public double density() { return density; }
 	public double edgeFalloff() { return edgeFalloff; }
+
+	public JsonObject toJson() {
+		JsonObject json = new JsonObject();
+		json.addProperty("type", "stratiform_seam");
+		json.add("strike_length", range(strikeLength.minimum(), strikeLength.maximum()));
+		json.add("down_dip_width", range(downDipWidth.minimum(), downDipWidth.maximum()));
+		json.add("thickness", range(minimumThickness, maximumThickness));
+		json.add("dip_degrees", range(minimumDipDegrees, maximumDipDegrees));
+		json.addProperty("bend_amplitude", bendAmplitude);
+		json.addProperty("bend_wavelength", bendWavelength);
+		json.addProperty("fold_amplitude", foldAmplitude);
+		json.addProperty("fold_wavelength", foldWavelength);
+		json.addProperty("density", density);
+		json.addProperty("edge_falloff", edgeFalloff);
+		return json;
+	}
+
+	private static JsonArray range(Number minimum, Number maximum) {
+		JsonArray result = new JsonArray();
+		result.add(new JsonPrimitive(minimum));
+		result.add(new JsonPrimitive(maximum));
+		return result;
+	}
 
 	private static void requireRange(double min, double max, double floor, double ceiling,
 			String name) {

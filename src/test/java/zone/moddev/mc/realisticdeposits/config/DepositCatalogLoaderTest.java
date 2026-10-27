@@ -8,11 +8,14 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 
 import org.junit.jupiter.api.Test;
 
 import zone.moddev.mc.realisticdeposits.model.AlignmentMode;
+import zone.moddev.mc.realisticdeposits.model.DepositDefinition;
 import zone.moddev.mc.realisticdeposits.model.InteractionPolicy;
+import zone.moddev.mc.orespawn.api.GeologyFamily;
 
 class DepositCatalogLoaderTest {
 	@Test
@@ -28,9 +31,11 @@ class DepositCatalogLoaderTest {
 				catalog.definitions().get(0).id());
 		assertEquals("minecraft:iron_ore", catalog.definitions().get(0).resource());
 		assertEquals(AlignmentMode.MASSIVE_RARE, catalog.definitions().get(0).alignment());
-		assertEquals(InteractionPolicy.ADDITIVE, catalog.definitions().get(0).interaction());
-		assertEquals(192, catalog.definitions().get(0).seam().strikeLength().minimum());
-		assertEquals(384, catalog.definitions().get(0).seam().strikeLength().maximum());
+		assertEquals(InteractionPolicy.HYBRID, catalog.definitions().get(0).interaction());
+		assertEquals(0.15D, catalog.definitions().get(0)
+				.effectiveBackgroundGenerationScale().getAsDouble());
+		assertEquals(640, catalog.definitions().get(0).seam().strikeLength().minimum());
+		assertEquals(960, catalog.definitions().get(0).seam().strikeLength().maximum());
 		assertTrue(catalog.warnings().isEmpty());
 	}
 
@@ -76,6 +81,44 @@ class DepositCatalogLoaderTest {
 		assertThrows(IllegalArgumentException.class, () -> DepositCatalogLoader.load(
 				new StringReader(validJson().replace("\"salt\":17", "\"salt\":17.5")),
 				"integer.json"));
+	}
+
+	@Test
+	void parsesGeologyBiomeAndHybridPolicyControls() {
+		String json = validJson().replace("\"alignment\":\"massive_rare\"",
+				"\"alignment\":\"rock_aligned\",\"geomes\":[\"orespawn:sedimentary_basin\"],"
+				+ "\"rock_families\":[\"sedimentary\"],\"biome_ids\":[\"minecraft:plains\"],"
+				+ "\"excluded_biome_ids\":[\"minecraft:desert\"],"
+				+ "\"biome_dictionary\":[\"forest\"],\"excluded_biome_dictionary\":[\"hot\"]")
+				.replace("\"interaction\":\"additive\"",
+						"\"interaction\":\"hybrid\",\"background_generation_scale\":0.4");
+		DepositDefinition definition = DepositCatalogLoader.load(new StringReader(json),
+				"aligned.json").definitions().get(0);
+
+		assertEquals(Collections.singleton("orespawn:sedimentary_basin"), definition.geomes());
+		assertEquals(Collections.singleton(GeologyFamily.SEDIMENTARY), definition.rockFamilies());
+		assertEquals(Collections.singleton("minecraft:plains"), definition.biomeIds());
+		assertEquals(Collections.singleton("minecraft:desert"), definition.excludedBiomeIds());
+		assertEquals(Collections.singleton("FOREST"), definition.biomeDictionary());
+		assertEquals(Collections.singleton("HOT"), definition.excludedBiomeDictionary());
+		assertEquals(0.4D, definition.effectiveBackgroundGenerationScale().getAsDouble());
+		assertEquals(definition.toJson(), DepositCatalogLoader.loadDefinition(definition.toJson(),
+				"round-trip" ).toJson());
+	}
+
+	@Test
+	void enforcesAlignmentAndPolicySpecificFields() {
+		assertThrows(IllegalArgumentException.class, () -> DepositCatalogLoader.load(
+				new StringReader(validJson().replace("\"alignment\":\"massive_rare\"",
+						"\"alignment\":\"geome_aligned\"")), "missing-geome.json"));
+		assertThrows(IllegalArgumentException.class, () -> DepositCatalogLoader.load(
+				new StringReader(validJson().replace("\"interaction\":\"additive\"",
+						"\"interaction\":\"additive\",\"background_generation_scale\":0.5")),
+				"additive-scale.json"));
+		DepositDefinition hybrid = DepositCatalogLoader.load(new StringReader(validJson()
+				.replace("\"interaction\":\"additive\"", "\"interaction\":\"hybrid\"")),
+				"hybrid-default.json").definitions().get(0);
+		assertEquals(0.25D, hybrid.effectiveBackgroundGenerationScale().getAsDouble());
 	}
 
 	private static String validJson() {

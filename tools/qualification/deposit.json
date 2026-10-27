@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "catalog": "realisticdeposits:qualification",
+  "deposits": [
+    {
+      "id": "realisticdeposits:qualification_iron",
+      "enabled": true,
+      "resource": "minecraft:iron_ore",
+      "alignment": "massive_rare",
+      "interaction": "hybrid",
+      "dimensions": ["minecraft:overworld"],
+      "hosts": ["minecraft:stone"],
+      "min_y": 100,
+      "max_y": 119,
+      "region_spacing_chunks": 8,
+      "selection_chance": 1.0,
+      "salt": 17,
+      "shape": {
+        "type": "stratiform_seam",
+        "strike_length": [64, 96],
+        "down_dip_width": [16, 24],
+        "thickness": [2.0, 4.0],
+        "dip_degrees": [5.0, 10.0],
+        "bend_amplitude": 4.0,
+        "bend_wavelength": 64.0,
+        "fold_amplitude": 2.0,
+        "fold_wavelength": 48.0,
+        "density": 0.25,
+        "edge_falloff": 0.2
+      }
+    }
+  ]
+}

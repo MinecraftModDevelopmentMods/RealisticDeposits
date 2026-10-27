@@ -31,6 +31,17 @@ if (versionParts[3] != expectedTarget) {
             + "Minecraft ${project.minecraft_version} ${project.loader_name} target ${expectedTarget}")
 }
 
+def oreSpawnCoordinate = "curse.maven:mmd-orespawn-${project.orespawn_curse_project_id}:" \
+        + project.orespawn_curse_file_id
+def mappedOreSpawn = renamer.dependency(oreSpawnCoordinate)
+
+configurations {
+    oreSpawnRelease {
+        canBeConsumed = false
+        transitive = false
+    }
+}
+
 java {
     toolchain.languageVersion = JavaLanguageVersion.of(8)
     withSourcesJar()
@@ -76,6 +87,7 @@ def normalizeArchiveLineEndings = { details ->
 
 minecraft {
     mappings channel: project.mapping_channel, version: project.mapping_version
+    if (gradle.startParameter.offline) mavenizerArguments.add('--offline')
     // Packaged Forge applies OreSpawn's SRG transformer. ForgeGradle's mapped
     // development runtime needs the same two rules in mapped form; this input
     // is deliberately outside main resources and is never shipped by this mod.
@@ -87,6 +99,8 @@ minecraft {
         configureEach {
             workingDir.convention layout.projectDirectory.dir(configuredRunDirectory)
             systemProperty 'forge.logging.console.level', 'info'
+            systemProperty 'realisticDeposits.topologyProbe',
+                    providers.gradleProperty('realisticDepositsTopologyProbe').getOrElse('false')
         }
         register('client')
         register('server') {
@@ -140,18 +154,18 @@ repositories {
 dependencies {
     implementation minecraft.dependency(
             "net.minecraftforge:forge:${project.minecraft_version}-${project.forge_version}")
-    // Link only to OreSpawn's public packages; the dependency remains an
-    // ordinary external runtime mod and is never bundled into this jar.
-    // ForgeGradle 7's legacy target does not expose the later fg.deobf helper.
-    implementation("curse.maven:mmd-orespawn-${project.orespawn_curse_project_id}:"
-            + project.orespawn_curse_file_id) {
-        transitive = false
-    }
+    // Eclipse needs a direct LWJGL 2.9.4 dependency. Otherwise the old launcher
+    // can select 2.9.1, leaving a small panorama in an otherwise black window.
+    compileOnly 'org.lwjgl.lwjgl:lwjgl_util:2.9.4-nightly-20150209'
+    implementation mappedOreSpawn
+    oreSpawnRelease oreSpawnCoordinate
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.2'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'
 }
+
+renamer.mappings.from minecraft.dependency.toSrgFile
 
 tasks.named('processResources', ProcessResources) {
     filteringCharset = 'UTF-8'
@@ -210,18 +224,63 @@ tasks.register('configureEclipseBuildship') {
 
 tasks.register('isolateEclipseProductionRuns') {
     group = 'ide'
-    description = 'Marks ordinary Eclipse launches as production-only.'
+    description = 'Normalizes Slime Launcher paths and marks ordinary Eclipse launches as production-only.'
     dependsOn tasks.named('genEclipseRuns')
     dependsOn tasks.named('configureEclipseBuildship')
     dependsOn prepareEclipseResources
     doLast {
-        ['runClient.launch', 'runServer.launch'].each { name ->
+        [['runClient.launch', 'runMajorIronClient.launch'],
+         ['runServer.launch', 'runMajorIronServer.launch']].each { pair ->
+            File source = file(pair[0])
+            File target = file(pair[1])
+            if (!source.isFile()) {
+                throw new GradleException("ForgeGradle did not generate ${pair[0]}")
+            }
+            String contents = source.getText('UTF-8')
+            contents = contents.replaceAll(
+                    /(<stringAttribute key="org\.eclipse\.jdt\.launching\.WORKING_DIRECTORY" value=")[^"]*("\/>)/,
+                    '$1' + file('run-major-iron').absolutePath.replace('\\', '\\\\') + '$2')
+            target.setText(contents.replace('\r\n', '\n'), 'UTF-8')
+        }
+        ['runClient.launch', 'runServer.launch',
+         'runMajorIronClient.launch', 'runMajorIronServer.launch',
+         'runTestClient.launch', 'runTestServer.launch'].each { name ->
             File launch = file(name)
             if (!launch.isFile()) {
                 throw new GradleException("ForgeGradle did not generate ${name}")
             }
             String contents = launch.getText('UTF-8')
-            if (!contents.contains('org.eclipse.jdt.launching.ATTR_EXCLUDE_TEST_CODE')) {
+
+            // Slime Launcher parses this attribute itself rather than receiving
+            // Eclipse's already separated argument vector. Quote every path so
+            // workspaces such as "RealisticDeposits 110" remain one argument.
+            def programArguments = contents =~ /(<stringAttribute key="org\.eclipse\.jdt\.launching\.PROGRAM_ARGUMENTS" value=")([^"]*)("\/>)/
+            if (programArguments.count != 1) {
+                throw new GradleException("ForgeGradle generated malformed program arguments in ${name}")
+            }
+            String arguments = programArguments[0][2]
+            ['cache', 'metadata', 'to-srg', 'to-obf'].each { flag ->
+                String prefix = "--${flag} "
+                int valueStart = arguments.indexOf(prefix)
+                if (valueStart < 0) {
+                    throw new GradleException("ForgeGradle omitted --${flag} from ${name}")
+                }
+                valueStart += prefix.length()
+                int valueEnd = arguments.indexOf(' --', valueStart)
+                if (valueEnd < 0) {
+                    throw new GradleException("ForgeGradle generated an unterminated --${flag} path in ${name}")
+                }
+                String value = arguments.substring(valueStart, valueEnd)
+                if (!value.startsWith('&quot;') || !value.endsWith('&quot;')) {
+                    arguments = "${arguments.substring(0, valueStart)}&quot;${value}&quot;${arguments.substring(valueEnd)}"
+                }
+            }
+            contents = contents.replace(programArguments[0][0],
+                    programArguments[0][1] + arguments + programArguments[0][3])
+
+            if ((name == 'runClient.launch' || name == 'runServer.launch'
+                    || name == 'runMajorIronClient.launch' || name == 'runMajorIronServer.launch')
+                    && !contents.contains('org.eclipse.jdt.launching.ATTR_EXCLUDE_TEST_CODE')) {
                 contents = contents.replace('</launchConfiguration>',
                         '  <booleanAttribute key="org.eclipse.jdt.launching.ATTR_EXCLUDE_TEST_CODE" value="true"/>\n'
                                 + '</launchConfiguration>')
@@ -235,6 +294,7 @@ tasks.register('verifyEclipseProductionClasspath') {
     group = 'verification'
     description = 'Verifies ordinary Eclipse launches and processed resources.'
     dependsOn tasks.named('isolateEclipseProductionRuns')
+    dependsOn tasks.named('verifyLegacyClientClasspath')
     doLast {
         File processedMetadata = file('bin/main/mcmod.info')
         if (!processedMetadata.isFile()) {
@@ -245,7 +305,8 @@ tasks.register('verifyEclipseProductionClasspath') {
                 || metadata.contains('${version}')) {
             throw new GradleException('Eclipse metadata is not version-expanded')
         }
-        ['runClient.launch', 'runServer.launch'].each { name ->
+        ['runClient.launch', 'runServer.launch',
+         'runMajorIronClient.launch', 'runMajorIronServer.launch'].each { name ->
             String contents = file(name).getText('UTF-8').replace('\\', '/')
             ['src/test', 'bin/test', 'build/classes/java/test', 'junit-',
              'opentest4j-', 'junit-platform-'].each { forbidden ->
@@ -257,9 +318,23 @@ tasks.register('verifyEclipseProductionClasspath') {
                     || !contents.contains('PROJECT_ATTR" value="RealisticDeposits"')) {
                 throw new GradleException("${name} is not a production-only RealisticDeposits launch")
             }
-            if (name == 'runServer.launch'
+            if ((name == 'runServer.launch' || name == 'runMajorIronServer.launch')
                     && (!contents.contains(' -- nogui"') || contents.contains('--nogui'))) {
                 throw new GradleException('Forge 1.10 server launch must use bare nogui')
+            }
+            if (name.startsWith('runMajorIron')
+                    && !contents.contains('run-major-iron')) {
+                throw new GradleException("${name} does not use the isolated major-iron directory")
+            }
+        }
+        ['runClient.launch', 'runServer.launch',
+         'runMajorIronClient.launch', 'runMajorIronServer.launch',
+         'runTestClient.launch', 'runTestServer.launch'].each { name ->
+            String contents = file(name).getText('UTF-8')
+            ['cache', 'metadata', 'to-srg', 'to-obf'].each { flag ->
+                if (!contents.contains("--${flag} &quot;")) {
+                    throw new GradleException("Eclipse launch does not quote its --${flag} path: ${name}")
+                }
             }
         }
     }
@@ -326,8 +401,11 @@ tasks.register('verifyProjectIdentity') {
         }
         if (project.minecraft_version != '1.10.2'
                 || project.forge_version != '12.18.3.2511'
-                || project.orespawn_version != '4.0.16.110021'
-                || project.orespawn_curse_file_id != '8844528') {
+                || project.orespawn_version != '4.1.3.110021'
+                || project.orespawn_version_range != '[4.1.3.110021,5.0.0)'
+                || oreSpawnCoordinate != 'curse.maven:mmd-orespawn-245586:9335434'
+                || project.orespawn_sha256
+                != 'FA1F4CAE66374E32162EC9543FF2BFBA236934C9E44D3F6AD882BC00761C15EF') {
             throw new GradleException('Unexpected target or OreSpawn dependency identity')
         }
         if (project.mod_version.toString().contains('-')) {
@@ -336,30 +414,62 @@ tasks.register('verifyProjectIdentity') {
     }
 }
 
+tasks.register('verifyLegacyClientClasspath') {
+    group = 'verification'
+    description = 'Guards the target LWJGL line used by legacy Eclipse client launches.'
+    doLast {
+        String expectedVersion = '2.9.4-nightly-20150209'
+        def directLwjgl = configurations.compileOnly.dependencies.findAll {
+            it.group == 'org.lwjgl.lwjgl' && it.name == 'lwjgl_util'
+        }
+        if (directLwjgl.size() != 1 || directLwjgl[0].version != expectedVersion) {
+            throw new GradleException('Eclipse requires one direct lwjgl_util 2.9.4-nightly dependency')
+        }
+
+        def resolved = configurations.compileClasspath.resolvedConfiguration.resolvedArtifacts
+                .findAll { it.moduleVersion.id.group == 'org.lwjgl.lwjgl' }
+                .collect { "${it.name}:${it.moduleVersion.id.version}" }
+                .toSet()
+        ['lwjgl', 'lwjgl_util', 'lwjgl-platform'].each { module ->
+            if (!resolved.contains("${module}:${expectedVersion}")) {
+                throw new GradleException("Compile classpath does not select ${module}:${expectedVersion}: ${resolved}")
+            }
+        }
+        if (resolved.any { !it.endsWith(":${expectedVersion}") }) {
+            throw new GradleException("Compile classpath contains a conflicting LWJGL line: ${resolved}")
+        }
+    }
+}
+
 tasks.register('verifyOreSpawnDependency') {
     group = 'verification'
-    description = 'Verifies the exact released OreSpawn API/runtime and mapped development transformer.'
+    description = 'Checks the published OreSpawn release and its development access rules.'
     doLast {
-        def artifacts = configurations.runtimeClasspath.resolvedConfiguration.resolvedArtifacts
-        def oreSpawnArtifacts = artifacts.findAll { artifact ->
-            def id = artifact.moduleVersion.id
-            id.group == 'curse.maven' && id.name.startsWith('mmd-orespawn-')
-        }
-        if (oreSpawnArtifacts.size() != 1) {
-            throw new GradleException("Expected exactly one released OreSpawn artifact, found "
-                    + oreSpawnArtifacts.collect { it.moduleVersion.id })
-        }
-        File oreSpawnFile = oreSpawnArtifacts.first().file
+        File oreSpawnFile = configurations.oreSpawnRelease.singleFile
         String actualHash = java.security.MessageDigest.getInstance('SHA-256')
                 .digest(oreSpawnFile.bytes).encodeHex().toString().toUpperCase()
         if (actualHash != project.orespawn_sha256) {
-            throw new GradleException("Released OreSpawn SHA-256 is ${actualHash}, expected "
+            throw new GradleException("OreSpawn SHA-256 is ${actualHash}, expected "
                     + project.orespawn_sha256)
         }
         java.util.zip.ZipFile archive = new java.util.zip.ZipFile(oreSpawnFile)
         try {
+            def apiEntry = archive.getEntry('zone/moddev/mc/orespawn/api/OreGenerationContext.class')
+            def providerEntry = archive.getEntry('zone/moddev/mc/orespawn/api/WorldgenProvider.class')
+            if (apiEntry == null || providerEntry == null) {
+                throw new GradleException('OreSpawn is missing the 4.1 extension API')
+            }
+            def metadata = new groovy.json.JsonSlurper().parse(
+                    archive.getInputStream(archive.getEntry('mcmod.info')))
+            def manifest = new java.util.jar.Manifest(
+                    archive.getInputStream(archive.getEntry('META-INF/MANIFEST.MF')))
+            if (!metadata.any { it.modid == 'orespawn'
+                    && it.version == project.orespawn_version && it.mcversion == project.minecraft_version }
+                    || manifest.mainAttributes.getValue('OreSpawn-API-Version') != '1') {
+                throw new GradleException('OreSpawn has the wrong version, Minecraft target or API major')
+            }
             def entry = archive.getEntry('META-INF/accesstransformer.cfg')
-            if (entry == null) throw new GradleException('Released OreSpawn has no access transformer')
+            if (entry == null) throw new GradleException('OreSpawn has no access transformer')
             List<String> releasedRules = archive.getInputStream(entry).getText('UTF-8').readLines()
                     .findAll { !it.trim().isEmpty() }
             List<String> mappedRules = file('gradle/orespawn-development-access-transformer.cfg')
@@ -379,9 +489,13 @@ tasks.register('verifyOreSpawnDependency') {
     }
 }
 
-tasks.register('verifyAlphaArtifacts') {
+tasks.named('compileJava') {
+    dependsOn tasks.named('verifyOreSpawnDependency')
+}
+
+tasks.register('verifyReleaseArtifacts') {
     group = 'verification'
-    description = 'Audits the runnable alpha artifacts and their deliberate no-world-write boundary.'
+    description = 'Audits the functional release artifacts and dependency isolation.'
     dependsOn releaseJar
     dependsOn tasks.named('sourcesJar')
     dependsOn tasks.named('javadocJar')
@@ -406,7 +520,10 @@ tasks.register('verifyAlphaArtifacts') {
                     'zone/moddev/mc/realisticdeposits/RealisticDeposits.class',
                     'zone/moddev/mc/realisticdeposits/client/RealisticDepositsGuiFactory.class',
                     'zone/moddev/mc/realisticdeposits/command/RealisticDepositsCommand.class',
-                    'zone/moddev/mc/realisticdeposits/geometry/RegionDepositPlanner.class'
+                    'zone/moddev/mc/realisticdeposits/geometry/RegionDepositPlanner.class',
+                    'zone/moddev/mc/realisticdeposits/generation/StratiformSeamPattern.class',
+                    'zone/moddev/mc/realisticdeposits/integration/OreSpawnIntegration.class',
+                    'zone/moddev/mc/realisticdeposits/proxy/ClientProxy.class'
             ].each { required ->
                 if (!entries.contains(required)) throw new GradleException("Main jar is missing ${required}")
             }
@@ -427,8 +544,8 @@ tasks.register('verifyAlphaArtifacts') {
                     .getText('UTF-8')
             if (!metadata.contains('"version": "' + project.version + '"')
                     || metadata.contains('${version}')
-                    || !metadata.contains('World writes await public OreSpawn extension contracts')) {
-                throw new GradleException('Main jar metadata does not describe the exact alpha identity')
+                    || !metadata.contains('geologically aware ore deposits powered by MMD OreSpawn')) {
+                throw new GradleException('Main jar metadata does not describe the exact functional identity')
             }
             def manifestEntry = mainArchive.getEntry('META-INF/MANIFEST.MF')
             if (manifestEntry == null) throw new GradleException('Main jar has no manifest')
@@ -468,6 +585,9 @@ tasks.register('verifyAlphaArtifacts') {
 
 tasks.named('check') {
     dependsOn tasks.named('verifyProjectIdentity')
+    dependsOn tasks.named('verifyLegacyClientClasspath')
     dependsOn tasks.named('verifyOreSpawnDependency')
-    dependsOn tasks.named('verifyAlphaArtifacts')
+    dependsOn tasks.named('verifyReleaseArtifacts')
 }
+
+apply from: 'gradle/release.gradle'

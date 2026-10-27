@@ -1,5 +1,8 @@
 # Realistic Deposits
 
+[![Build](https://github.com/MinecraftModDevelopmentMods/RealisticDeposits/actions/workflows/ci.yml/badge.svg?branch=master-1.10.2)](https://github.com/MinecraftModDevelopmentMods/RealisticDeposits/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/MinecraftModDevelopmentMods/RealisticDeposits/actions/workflows/codeql-analysis.yml/badge.svg?branch=master-1.10.2)](https://github.com/MinecraftModDevelopmentMods/RealisticDeposits/actions/workflows/codeql-analysis.yml)
+
 ![Realistic Deposits logo](src/main/resources/assets/realisticdeposits/textures/logo.png)
 
 Realistic Deposits is an extension for
@@ -13,30 +16,32 @@ projects.
 The project starts with Minecraft 1.10.2 and is intended to follow the
 maintained OreSpawn branches across Forge and NeoForge.
 
-## Current status
+This is an alpha. The supplied catalog currently adds iron only. Back up your
+world before updating, and expect the defaults to change as testing continues.
 
-Version `0.1.0.110021` is an early development preview. It can load and
-validate deposit definitions, plan deterministic formations, show their bounds
-with preview commands, and provide a configuration screen.
-
-It does **not** place or replace blocks yet. Installing this version will not
-add massive deposits to generated worlds. This limitation is intentional while
-the first generation integration is completed and tested.
-
-## Planned features
+## Current features
 
 - Rare, region-scale deposits that remain identical regardless of chunk
   generation order.
-- Long stratiform seams and other geologically inspired bodies instead of
-  simply enlarged spherical ore blobs.
+- Long, folded `stratiform_seam` formations instead of enlarged spherical ore
+  blobs. The experimental iron default is a major mining district with an
+  irregular principal horizon, five to seven splays, two or three subparallel
+  lenses, and short fault displacements. A sparse halo gives prospecting clues
+  around the fault gaps instead of making the displaced ore impossible to
+  rediscover. Each chunk writes only its own deterministic part of a deposit.
 - Massive-and-rare, geome-aware, and host-rock-aware generation modes.
 - Additive, hybrid, and replacement policies for controlling interaction with
   ordinary ore generation.
 - Configurable support for vanilla and modded resources.
-- Optional compatibility catalogs for Mineralogy, Base Metals, Modern Metals,
-  Base Minerals, and Base Gems where those mods are available.
 - Safe generation that avoids air, fluids, bedrock, block entities, structures,
   and undeclared host blocks.
+- Live reload for geometry and alignment tuning, with structural changes
+  clearly deferred until restart.
+- An entry in both Forge's Mods configuration and OreSpawn's World Settings.
+
+Compatibility catalogs for Mineralogy, Base Metals, Modern Metals, Base
+Minerals, and Base Gems will be added as those product lines become available
+on each target.
 
 ## Requirements
 
@@ -44,13 +49,14 @@ The current branch requires:
 
 - Minecraft 1.10.2;
 - Forge 12.18.3.2511 or a compatible newer Forge 12 build;
-- MMD OreSpawn 4.0.16 or newer, but earlier than OreSpawn 5;
+- [MMD OreSpawn 4.1.3.110021](https://www.curseforge.com/minecraft/mc-mods/mmd-orespawn/files/9335434)
+  or a newer compatible 1.10.2 release, but earlier than OreSpawn 5;
 - Java 8 to run Minecraft.
 
 Realistic Deposits is independent of the similarly themed Large Ore Deposits
 mod and does not require it.
 
-## Trying the development preview
+## Configuration
 
 Install Forge, OreSpawn, and Realistic Deposits in the usual `mods` directory.
 The first launch creates:
@@ -59,9 +65,51 @@ The first launch creates:
 config/realisticdeposits/deposits/vanilla.json
 ```
 
-The supplied definition describes a rare iron formation using a long, thin,
-folded `stratiform_seam`. You can inspect the loaded configuration and preview
-deterministic candidates with:
+The supplied definition describes one rare iron district using a 640–960 block
+folded horizon, a 160–240 block down-dip span, and a 3–8 block thickness. Its
+`density` controls the disseminated halo around the connected mineralized
+routes rather than producing a uniformly random cloud. Two or three faults
+introduce short, recoverable breaks and modest vertical or lateral offsets.
+The shipped iron definition uses `hybrid` interaction with 15% background iron
+so early play remains viable while a discovered district can support a
+long-lived mine and rail network.
+
+Deposits only affect newly generated chunks. Changing these settings does not
+retrogen, replace, or rewrite an existing chunk.
+
+Every definition chooses one alignment mode:
+
+- `massive_rare` selects formations without requiring OreSpawn geology;
+- `geome_aligned` requires the formation centre to be in one of its configured
+  `geomes`;
+- `rock_aligned` also requires each output block to be in one of its configured
+  `rock_families`.
+
+Aligned candidates are safely rejected if the current dimension has no active
+OreSpawn geology sampler. The available families are `sedimentary`,
+`metamorphic`, `igneous_intrusive`, and `igneous_volcanic`.
+
+The `interaction` field controls ordinary generation for the same resource and
+dimension:
+
+- `additive` leaves it unchanged;
+- `hybrid` scales it to 25% by default, or to
+  `background_generation_scale` when specified;
+- `replacement` disables it while leaving the massive deposit active.
+
+OreSpawn 4.1.3 applies those limits to imported OS1/OS3 ordinary rules too.
+Explicit custom placement channels remain independent. Manage Vanilla Ores
+must be on to activate imported vanilla rules. When it is off, those rules
+stay inactive and Minecraft supplies the ordinary placements instead.
+Realistic Deposits' selected policy still controls the background supply.
+Saved settings and existing chunks are preserved.
+
+Biome IDs and Forge biome-dictionary filters can be supplied with `biome_ids`,
+`excluded_biome_ids`, `biome_dictionary`, and
+`excluded_biome_dictionary`.
+
+Use the diagnostic commands to inspect the loaded catalog and preview planned
+formations:
 
 ```text
 /realisticdeposits status
@@ -69,23 +117,45 @@ deterministic candidates with:
 /realisticdeposits reload
 ```
 
-`reload` requires operator permission. These commands are diagnostic only in
-the current preview and never change world blocks.
+`reload` requires operator permission. It immediately applies `enabled`,
+selection, shape, height, geome, family, and alignment changes. Resource,
+dimension, host, biome-filter, interaction-policy, scale, added, and removed
+definition changes are structural and take effect after restart. New provider
+entries are deliberately not injected into a world profile that already
+exists.
 
-The configuration screen is also available from Forge's Mods list.
+The configuration screen is available from Forge's Mods list and OreSpawn's
+World Settings screen.
 
 ## Building from source
 
 The Gradle build runs on Java 17 and compiles the mod for Java 8 using the
-configured toolchain. On Windows, run:
+configured toolchain. ForgeGradle's Minecraft preparation utility uses Java 25.
+
+OreSpawn 4.1.3.110021 is downloaded from Curse Maven, checked against the
+official release checksum and mapped for development automatically. No sibling
+checkout, local OreSpawn build or `local.properties` file is needed.
+The exact dependency is `curse.maven:mmd-orespawn-245586:9335434`.
+
+On Windows, run:
 
 ```powershell
 .\gradlew.bat clean check build
-.\gradlew.bat genEclipseRuns
+.\gradlew.bat genEclipseRuns verifyEclipseProductionClasspath
 ```
 
 Import the project into Eclipse through Buildship after generating the Forge
 run configurations.
+
+For a separate test world, use `runMajorIronClient.launch`. It keeps its saves
+and configuration in `run-major-iron`, apart from the ordinary client launch.
+
+The [generation qualification guide](tools/qualification/README.md) describes
+the optional packaged-server checks for policies, imports and saved worlds.
+
+CI also checks reproducible jars, dependency hashes and ordinary Eclipse
+launches. The [release guide](docs/RELEASING.md) explains the manual release
+action and its publication checks.
 
 Bug reports and feature ideas are welcome through the
 [issue tracker](https://github.com/MinecraftModDevelopmentMods/RealisticDeposits/issues).

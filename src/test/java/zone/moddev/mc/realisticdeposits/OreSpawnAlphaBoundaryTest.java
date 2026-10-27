@@ -11,11 +11,13 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
 import zone.moddev.mc.orespawn.api.OrePlacementContext;
+import zone.moddev.mc.orespawn.api.OreGenerationContext;
 import zone.moddev.mc.orespawn.api.OreSpawnApi;
+import zone.moddev.mc.orespawn.api.WorldgenProvider;
 
 class OreSpawnAlphaBoundaryTest {
 	@Test
-	void releasedApiHasPatternSupportButNotRegionDepositContext() {
+	void basePatternApiRemainsCompatibleAndOreSpawn41AddsExtendedContext() {
 		Set<String> methods = Arrays.stream(OrePlacementContext.class.getMethods())
 				.map(Method::getName).collect(Collectors.toSet());
 		assertTrue(methods.contains("inside"));
@@ -25,6 +27,15 @@ class OreSpawnAlphaBoundaryTest {
 		assertFalse(methods.contains("chunkX"));
 		assertFalse(methods.contains("chunkZ"));
 		assertFalse(methods.contains("geologySampler"));
+		Set<String> extended = Arrays.stream(OreGenerationContext.class.getMethods())
+				.map(Method::getName).collect(Collectors.toSet());
+		assertTrue(extended.contains("worldSeed"));
+		assertTrue(extended.contains("dimension"));
+		assertTrue(extended.contains("chunkX"));
+		assertTrue(extended.contains("chunkZ"));
+		assertTrue(extended.contains("geologySampler"));
+		assertTrue(Arrays.stream(WorldgenProvider.Builder.class.getMethods())
+				.anyMatch(method -> method.getName().equals("mergeNewEntriesIntoExistingWorlds")));
 		assertTrue(OreSpawnApi.API_VERSION == 1);
 	}
 }
