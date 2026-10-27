@@ -99,9 +99,10 @@ dimension:
 
 OreSpawn 4.1.3 applies those limits to imported OS1/OS3 ordinary rules too.
 Explicit custom placement channels remain independent. Manage Vanilla Ores
-must be on for OreSpawn to control imported vanilla rules; when it is off,
-Minecraft keeps its normal generation. Saved settings and existing chunks
-are preserved.
+must be on to activate imported vanilla rules. When it is off, those rules
+stay inactive and Minecraft supplies the ordinary placements instead.
+Realistic Deposits' selected policy still controls the background supply.
+Saved settings and existing chunks are preserved.
 
 Biome IDs and Forge biome-dictionary filters can be supplied with `biome_ids`,
 `excluded_biome_ids`, `biome_dictionary`, and
