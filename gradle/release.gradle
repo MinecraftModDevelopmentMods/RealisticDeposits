@@ -36,8 +36,7 @@ def canonicalEnumHierarchy = { String html ->
 
 tasks.named('javadoc', Javadoc) {
     doLast {
-        File tree = new File(destinationDir, 'overview-tree.html')
-        if (tree.isFile()) {
+        project.fileTree(destinationDir).matching { include '**/*-tree.html' }.each { File tree ->
             tree.setText(canonicalEnumHierarchy(tree.getText('UTF-8')), 'UTF-8')
         }
     }
@@ -55,6 +54,16 @@ tasks.register('verifyJavadocOrdering') {
         if (canonicalEnumHierarchy(reversed) != ordered
                 || canonicalEnumHierarchy(ordered) != ordered) {
             throw new GradleException('Enum hierarchy normalization changed content or was not stable')
+        }
+
+        File output = tasks.named('javadoc', Javadoc).get().destinationDir
+        def trees = project.fileTree(output).matching { include '**/*-tree.html' }
+        if (trees.isEmpty()) throw new GradleException('Javadoc did not generate any hierarchy pages')
+        trees.each { File tree ->
+            String html = tree.getText('UTF-8')
+            if (html != canonicalEnumHierarchy(html)) {
+                throw new GradleException("Unstable enum ordering in ${tree.name}")
+            }
         }
     }
 }
