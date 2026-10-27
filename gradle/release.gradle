@@ -12,6 +12,53 @@ def hash = { File input ->
     MessageDigest.getInstance('SHA-256').digest(input.bytes).encodeHex().toString().toUpperCase()
 }
 
+// Java 8's doclet leaves enum siblings in an arbitrary order. Sort only those
+// leaf rows; the rest of the generated hierarchy stays exactly as it was.
+def canonicalEnumHierarchy = { String html ->
+    List<String> lines = html.readLines()
+    int start = 0
+
+    while (start < lines.size()) {
+        int end = start
+        while (end < lines.size() && lines[end] ==~ /\s*<li type="circle">.*title="enum in [^"]+".*<\/li>\s*/) {
+            end++
+        }
+        if (end > start) {
+            Collections.sort(lines.subList(start, end))
+            start = end
+        } else {
+            start++
+        }
+    }
+
+    lines.join('\n') + '\n'
+}
+
+tasks.named('javadoc', Javadoc) {
+    doLast {
+        File tree = new File(destinationDir, 'overview-tree.html')
+        if (tree.isFile()) {
+            tree.setText(canonicalEnumHierarchy(tree.getText('UTF-8')), 'UTF-8')
+        }
+    }
+}
+
+tasks.register('verifyJavadocOrdering') {
+    group = 'verification'
+    description = 'Checks that Java 8 enum documentation has a stable order.'
+    dependsOn tasks.named('javadoc')
+    doLast {
+        String first = '<li type="circle">A <a title="enum in example">A</a></li>'
+        String second = '<li type="circle">B <a title="enum in example">B</a></li>'
+        String ordered = "<ul>\n${first}\n${second}\n</ul>\n"
+        String reversed = "<ul>\n${second}\n${first}\n</ul>\n"
+        if (canonicalEnumHierarchy(reversed) != ordered
+                || canonicalEnumHierarchy(ordered) != ordered) {
+            throw new GradleException('Enum hierarchy normalization changed content or was not stable')
+        }
+    }
+}
+
 tasks.register('verifyReleaseConfiguration') {
     group = 'verification'
     doLast {
@@ -193,4 +240,5 @@ tasks.withType(PublishToMavenRepository).configureEach {
 tasks.named('check') {
     dependsOn tasks.named('auditPublicArchives')
     dependsOn tasks.named('verifyMavenCoordinates')
+    dependsOn tasks.named('verifyJavadocOrdering')
 }
