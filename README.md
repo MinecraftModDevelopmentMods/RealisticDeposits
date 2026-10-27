@@ -1,5 +1,8 @@
 # Realistic Deposits
 
+[![Build](https://github.com/MinecraftModDevelopmentMods/RealisticDeposits/actions/workflows/ci.yml/badge.svg?branch=master-1.10.2)](https://github.com/MinecraftModDevelopmentMods/RealisticDeposits/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/MinecraftModDevelopmentMods/RealisticDeposits/actions/workflows/codeql-analysis.yml/badge.svg?branch=master-1.10.2)](https://github.com/MinecraftModDevelopmentMods/RealisticDeposits/actions/workflows/codeql-analysis.yml)
+
 ![Realistic Deposits logo](src/main/resources/assets/realisticdeposits/textures/logo.png)
 
 Realistic Deposits is an extension for
@@ -12,6 +15,9 @@ projects.
 
 The project starts with Minecraft 1.10.2 and is intended to follow the
 maintained OreSpawn branches across Forge and NeoForge.
+
+This is an alpha. The supplied catalog currently adds iron only. Back up your
+world before updating, and expect the defaults to change as testing continues.
 
 ## Current features
 
@@ -43,7 +49,8 @@ The current branch requires:
 
 - Minecraft 1.10.2;
 - Forge 12.18.3.2511 or a compatible newer Forge 12 build;
-- MMD OreSpawn 4.1.0 or newer, but earlier than OreSpawn 5;
+- [MMD OreSpawn 4.1.3.110021](https://www.curseforge.com/minecraft/mc-mods/mmd-orespawn/files/9335434)
+  or a newer compatible 1.10.2 release, but earlier than OreSpawn 5;
 - Java 8 to run Minecraft.
 
 Realistic Deposits is independent of the similarly themed Large Ore Deposits
@@ -90,6 +97,12 @@ dimension:
   `background_generation_scale` when specified;
 - `replacement` disables it while leaving the massive deposit active.
 
+OreSpawn 4.1.3 applies those limits to imported OS1/OS3 ordinary rules too.
+Explicit custom placement channels remain independent. Manage Vanilla Ores
+must be on for OreSpawn to control imported vanilla rules; when it is off,
+Minecraft keeps its normal generation. Saved settings and existing chunks
+are preserved.
+
 Biome IDs and Forge biome-dictionary filters can be supplied with `biome_ids`,
 `excluded_biome_ids`, `biome_dictionary`, and
 `excluded_biome_dictionary`.
@@ -116,25 +129,32 @@ World Settings screen.
 ## Building from source
 
 The Gradle build runs on Java 17 and compiles the mod for Java 8 using the
-configured toolchain. Until OreSpawn 4.1.0 is published, development is pinned
-to its exact local release and mapped development jars. Point an ignored
-`local.properties` file at them:
+configured toolchain. ForgeGradle's Minecraft preparation utility uses Java 25.
 
-```properties
-orespawn.local.jar=D:/path/to/OreSpawn-4.1.0.110021.jar
-orespawn.local.deobf.jar=D:/path/to/OreSpawn-4.1.0.110021-deobf.jar
-```
+OreSpawn 4.1.3.110021 is downloaded from Curse Maven, checked against the
+official release checksum and mapped for development automatically. No sibling
+checkout, local OreSpawn build or `local.properties` file is needed.
+The exact dependency is `curse.maven:mmd-orespawn-245586:9335434`.
 
-The build verifies both artifact hashes and has no fallback to OreSpawn 4.0.x.
 On Windows, run:
 
 ```powershell
 .\gradlew.bat clean check build
-.\gradlew.bat genEclipseRuns
+.\gradlew.bat genEclipseRuns verifyEclipseProductionClasspath
 ```
 
 Import the project into Eclipse through Buildship after generating the Forge
 run configurations.
+
+For a separate test world, use `runMajorIronClient.launch`. It keeps its saves
+and configuration in `run-major-iron`, apart from the ordinary client launch.
+
+The [generation qualification guide](tools/qualification/README.md) describes
+the optional packaged-server checks for policies, imports and saved worlds.
+
+CI also checks reproducible jars, dependency hashes and ordinary Eclipse
+launches. The [release guide](docs/RELEASING.md) explains the manual release
+action and its publication checks.
 
 Bug reports and feature ideas are welcome through the
 [issue tracker](https://github.com/MinecraftModDevelopmentMods/RealisticDeposits/issues).

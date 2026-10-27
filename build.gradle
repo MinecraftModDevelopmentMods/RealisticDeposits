@@ -31,30 +31,15 @@ if (versionParts[3] != expectedTarget) {
             + "Minecraft ${project.minecraft_version} ${project.loader_name} target ${expectedTarget}")
 }
 
-Properties localProperties = new Properties()
-File localPropertiesFile = file('local.properties')
-if (localPropertiesFile.isFile()) {
-    localPropertiesFile.withInputStream { localProperties.load(it) }
-}
-String oreSpawnLocalPath = System.getenv('ORESPAWN_LOCAL_JAR')
-        ?: localProperties.getProperty('orespawn.local.jar')
-if (oreSpawnLocalPath == null || oreSpawnLocalPath.trim().isEmpty()) {
-    throw new GradleException('Set ORESPAWN_LOCAL_JAR or orespawn.local.jar in ignored local.properties '
-            + 'to the exact local OreSpawn 4.1.0.110021 candidate')
-}
-File oreSpawnLocalJar = file(oreSpawnLocalPath).canonicalFile
-if (!oreSpawnLocalJar.isFile()) {
-    throw new GradleException("Local OreSpawn candidate does not exist: ${oreSpawnLocalJar}")
-}
-String oreSpawnLocalDeobfPath = System.getenv('ORESPAWN_LOCAL_DEOBF_JAR')
-        ?: localProperties.getProperty('orespawn.local.deobf.jar')
-if (oreSpawnLocalDeobfPath == null || oreSpawnLocalDeobfPath.trim().isEmpty()) {
-    throw new GradleException('Set ORESPAWN_LOCAL_DEOBF_JAR or orespawn.local.deobf.jar in ignored '
-            + 'local.properties to the matching mapped OreSpawn development jar')
-}
-File oreSpawnLocalDeobfJar = file(oreSpawnLocalDeobfPath).canonicalFile
-if (!oreSpawnLocalDeobfJar.isFile()) {
-    throw new GradleException("Mapped local OreSpawn candidate does not exist: ${oreSpawnLocalDeobfJar}")
+def oreSpawnCoordinate = "curse.maven:mmd-orespawn-${project.orespawn_curse_project_id}:" \
+        + project.orespawn_curse_file_id
+def mappedOreSpawn = renamer.dependency(oreSpawnCoordinate)
+
+configurations {
+    oreSpawnRelease {
+        canBeConsumed = false
+        transitive = false
+    }
 }
 
 java {
@@ -102,6 +87,7 @@ def normalizeArchiveLineEndings = { details ->
 
 minecraft {
     mappings channel: project.mapping_channel, version: project.mapping_version
+    if (gradle.startParameter.offline) mavenizerArguments.add('--offline')
     // Packaged Forge applies OreSpawn's SRG transformer. ForgeGradle's mapped
     // development runtime needs the same two rules in mapped form; this input
     // is deliberately outside main resources and is never shipped by this mod.
@@ -155,6 +141,11 @@ repositories {
     maven fg.minecraftLibsMaven
     mavenCentral()
     maven {
+        name = 'CurseMaven'
+        url = 'https://www.cursemaven.com'
+        content { includeGroup 'curse.maven' }
+    }
+    maven {
         name = 'MinecraftLibraries'
         url = 'https://libraries.minecraft.net/'
     }
@@ -163,21 +154,18 @@ repositories {
 dependencies {
     implementation minecraft.dependency(
             "net.minecraftforge:forge:${project.minecraft_version}-${project.forge_version}")
-    // Slime Launcher contributes the vanilla 1.10 manifest's LWJGL 2.9.1
-    // libraries ahead of ForgeGradle's selected 2.9.4 runtime unless the
-    // target LWJGL line is also a direct Eclipse project dependency. The red
-    // launch loaded that older core immediately before the 256x256 panorama
-    // viewport/GL 1281 failure. Keep this aligned with the green OreSpawn and
-    // Mineralogy 1.10 launches.
+    // Eclipse needs a direct LWJGL 2.9.4 dependency. Otherwise the old launcher
+    // can select 2.9.1, leaving a small panorama in an otherwise black window.
     compileOnly 'org.lwjgl.lwjgl:lwjgl_util:2.9.4-nightly-20150209'
-    // Development is deliberately pinned to the exact local OreSpawn 4.1 API
-    // candidate. There is no fallback to a released 4.0.x artifact.
-    implementation files(oreSpawnLocalDeobfJar)
+    implementation mappedOreSpawn
+    oreSpawnRelease oreSpawnCoordinate
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.2'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'
 }
+
+renamer.mappings.from minecraft.dependency.toSrgFile
 
 tasks.named('processResources', ProcessResources) {
     filteringCharset = 'UTF-8'
@@ -413,7 +401,11 @@ tasks.register('verifyProjectIdentity') {
         }
         if (project.minecraft_version != '1.10.2'
                 || project.forge_version != '12.18.3.2511'
-                || project.orespawn_version != '4.1.0.110021') {
+                || project.orespawn_version != '4.1.3.110021'
+                || project.orespawn_version_range != '[4.1.3.110021,5.0.0)'
+                || oreSpawnCoordinate != 'curse.maven:mmd-orespawn-245586:9335434'
+                || project.orespawn_sha256
+                != 'FA1F4CAE66374E32162EC9543FF2BFBA236934C9E44D3F6AD882BC00761C15EF') {
             throw new GradleException('Unexpected target or OreSpawn dependency identity')
         }
         if (project.mod_version.toString().contains('-')) {
@@ -451,30 +443,33 @@ tasks.register('verifyLegacyClientClasspath') {
 
 tasks.register('verifyOreSpawnDependency') {
     group = 'verification'
-    description = 'Verifies the exact local OreSpawn 4.1 API/runtime and mapped development transformer.'
+    description = 'Checks the published OreSpawn release and its development access rules.'
     doLast {
-        File oreSpawnFile = oreSpawnLocalJar
+        File oreSpawnFile = configurations.oreSpawnRelease.singleFile
         String actualHash = java.security.MessageDigest.getInstance('SHA-256')
                 .digest(oreSpawnFile.bytes).encodeHex().toString().toUpperCase()
         if (actualHash != project.orespawn_sha256) {
-            throw new GradleException("Local OreSpawn SHA-256 is ${actualHash}, expected "
+            throw new GradleException("OreSpawn SHA-256 is ${actualHash}, expected "
                     + project.orespawn_sha256)
-        }
-        String actualDeobfHash = java.security.MessageDigest.getInstance('SHA-256')
-                .digest(oreSpawnLocalDeobfJar.bytes).encodeHex().toString().toUpperCase()
-        if (actualDeobfHash != project.orespawn_deobf_sha256) {
-            throw new GradleException("Mapped local OreSpawn SHA-256 is ${actualDeobfHash}, expected "
-                    + project.orespawn_deobf_sha256)
         }
         java.util.zip.ZipFile archive = new java.util.zip.ZipFile(oreSpawnFile)
         try {
             def apiEntry = archive.getEntry('zone/moddev/mc/orespawn/api/OreGenerationContext.class')
             def providerEntry = archive.getEntry('zone/moddev/mc/orespawn/api/WorldgenProvider.class')
             if (apiEntry == null || providerEntry == null) {
-                throw new GradleException('Local OreSpawn candidate is missing the 4.1 extension API')
+                throw new GradleException('OreSpawn is missing the 4.1 extension API')
+            }
+            def metadata = new groovy.json.JsonSlurper().parse(
+                    archive.getInputStream(archive.getEntry('mcmod.info')))
+            def manifest = new java.util.jar.Manifest(
+                    archive.getInputStream(archive.getEntry('META-INF/MANIFEST.MF')))
+            if (!metadata.any { it.modid == 'orespawn'
+                    && it.version == project.orespawn_version && it.mcversion == project.minecraft_version }
+                    || manifest.mainAttributes.getValue('OreSpawn-API-Version') != '1') {
+                throw new GradleException('OreSpawn has the wrong version, Minecraft target or API major')
             }
             def entry = archive.getEntry('META-INF/accesstransformer.cfg')
-            if (entry == null) throw new GradleException('Local OreSpawn has no access transformer')
+            if (entry == null) throw new GradleException('OreSpawn has no access transformer')
             List<String> releasedRules = archive.getInputStream(entry).getText('UTF-8').readLines()
                     .findAll { !it.trim().isEmpty() }
             List<String> mappedRules = file('gradle/orespawn-development-access-transformer.cfg')
@@ -486,12 +481,16 @@ tasks.register('verifyOreSpawnDependency') {
                     'public-f net.minecraft.world.WorldProvider biomeProvider',
                     'public-f net.minecraft.world.gen.ChunkProviderOverworld oceanBlock'
             ]) {
-                throw new GradleException('OreSpawn development transformer no longer matches the local candidate')
+                throw new GradleException('OreSpawn development transformer no longer matches the release')
             }
         } finally {
             archive.close()
         }
     }
+}
+
+tasks.named('compileJava') {
+    dependsOn tasks.named('verifyOreSpawnDependency')
 }
 
 tasks.register('verifyReleaseArtifacts') {
@@ -590,3 +589,5 @@ tasks.named('check') {
     dependsOn tasks.named('verifyOreSpawnDependency')
     dependsOn tasks.named('verifyReleaseArtifacts')
 }
+
+apply from: 'gradle/release.gradle'

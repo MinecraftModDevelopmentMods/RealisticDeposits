@@ -1,0 +1,196 @@
+import groovy.xml.XmlSlurper
+import java.security.MessageDigest
+import java.util.zip.ZipFile
+
+def releaseNames = [
+        "RealisticDeposits-${version}.jar",
+        "RealisticDeposits-${version}-sources.jar",
+        "RealisticDeposits-${version}-javadoc.jar"
+]
+def preparedDirectory = providers.gradleProperty('preparedReleaseDir')
+def hash = { File input ->
+    MessageDigest.getInstance('SHA-256').digest(input.bytes).encodeHex().toString().toUpperCase()
+}
+
+tasks.register('verifyReleaseConfiguration') {
+    group = 'verification'
+    doLast {
+        if (project.mod_version != '0.1.1.110021'
+                || project.curseforge_project_id != '1689703'
+                || project.mod_artifact != 'RealisticDeposits'
+                || project.java_version != '8' || project.gradle_java_version != '17'
+                || project.java_toolchain_version != '8.0.502+7'
+                || project.loader_name != 'forge' || project.loader_code != '1') {
+            throw new GradleException('Unexpected release identity or Java target')
+        }
+
+        String compiler = tasks.named('compileJava', JavaCompile).get()
+                .javaCompiler.get().metadata.javaRuntimeVersion
+        if (compiler != '1.8.0_502-b07' && compiler != '8.0.502+7') {
+            throw new GradleException("Release compilation needs Java 8.0.502+7; found ${compiler}")
+        }
+        if (JavaVersion.current() != JavaVersion.VERSION_17) {
+            throw new GradleException('Run this release build with Java 17')
+        }
+    }
+}
+
+tasks.register('auditPublicArchives') {
+    group = 'verification'
+    dependsOn tasks.named('verifyReleaseArtifacts')
+    dependsOn tasks.named('verifyReleaseConfiguration')
+    doLast {
+        releaseNames.eachWithIndex { name, index ->
+            ZipFile archive = new ZipFile(layout.buildDirectory.file("libs/${name}").get().asFile)
+            try {
+                archive.entries().each { entry ->
+                    String path = entry.name.toLowerCase(Locale.ROOT)
+                    if (path =~ /(^|\/)(agents?\.md|claude\.md|gemini\.md|agent-notes|\.codex|\.agents|\.claude|\.gemini|run|evidence|reference)(\/|$)/
+                            || path.contains('probe') || path.contains('fixture')
+                            || path.startsWith('org/junit/') || path.contains('/test/')
+                            || path.startsWith('zone/moddev/mc/orespawn/')) {
+                        throw new GradleException("Public archive contains local/test material: ${name}/${entry.name}")
+                    }
+                    if (index == 0 && path.endsWith('.class')
+                            && !path.startsWith('zone/moddev/mc/realisticdeposits/')) {
+                        throw new GradleException("Unexpected bundled class: ${entry.name}")
+                    }
+                    if (path.endsWith('.java') || path.endsWith('.json') || path.endsWith('.info')
+                            || path.endsWith('.mf') || path.endsWith('.html')) {
+                        String text = archive.getInputStream(entry).getText('UTF-8')
+                        if (text =~ /(?i)[A-Z]:[\\\/](Users|BaseMetals|MinecraftMineralogy)[\\\/]/
+                                || text.contains('Build-Timestamp:')
+                                || text.contains('Implementation-Timestamp:')) {
+                            throw new GradleException("Local path or volatile metadata in ${name}/${entry.name}")
+                        }
+                    }
+                }
+            } finally {
+                archive.close()
+            }
+        }
+    }
+}
+
+tasks.register('writeReleaseChecksums') {
+    group = 'release'
+    dependsOn tasks.named('auditPublicArchives')
+    doLast {
+        File output = layout.buildDirectory.file('release/SHA256SUMS').get().asFile
+        output.parentFile.mkdirs()
+        output.setText(releaseNames.collect { name ->
+            "${hash(layout.buildDirectory.file("libs/${name}").get().asFile)}  ${name}"
+        }.join('\n') + '\n', 'UTF-8')
+    }
+}
+
+// Publication consumes the files already built and checked by the release job.
+// It must not quietly rebuild a different jar on the upload runner.
+tasks.register('verifyPreparedReleaseArtifacts') {
+    group = 'verification'
+    doLast {
+        if (!preparedDirectory.isPresent()) {
+            throw new GradleException('preparedReleaseDir is required for publication')
+        }
+        File directory = file(preparedDirectory.get())
+        File sums = new File(directory, 'SHA256SUMS')
+        if (!sums.isFile()) throw new GradleException('The release bundle has no SHA256SUMS')
+        List<String> lines = sums.readLines('UTF-8').findAll { !it.isEmpty() }
+        if (lines.size() != releaseNames.size()) throw new GradleException('Wrong release bundle file count')
+
+        releaseNames.each { name ->
+            File artifact = new File(directory, name)
+            if (!artifact.isFile() || !lines.contains("${hash(artifact)}  ${name}".toString())) {
+                throw new GradleException("Release bundle checksum mismatch: ${name}")
+            }
+        }
+        ZipFile main = new ZipFile(new File(directory, releaseNames[0]))
+        try {
+            def manifest = new java.util.jar.Manifest(main.getInputStream(main.getEntry('META-INF/MANIFEST.MF')))
+            if (manifest.mainAttributes.getValue('Maven-Artifact')
+                    != "zone.moddev.mc.realisticdeposits:RealisticDeposits:${version}") {
+                throw new GradleException('Prepared jar has the wrong Maven identity')
+            }
+        } finally {
+            main.close()
+        }
+    }
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            groupId = project.mod_group
+            artifactId = 'RealisticDeposits'
+            version = project.version.toString()
+            releaseNames.eachWithIndex { name, index ->
+                File input = preparedDirectory.isPresent()
+                        ? new File(file(preparedDirectory.get()), name)
+                        : layout.buildDirectory.file("libs/${name}").get().asFile
+                artifact(input) {
+                    if (index == 1) classifier = 'sources'
+                    if (index == 2) classifier = 'javadoc'
+                }
+            }
+            pom {
+                name = project.mod_name
+                description = project.mod_description
+                url = 'https://github.com/MinecraftModDevelopmentMods/RealisticDeposits'
+                licenses {
+                    license {
+                        name = 'GNU Lesser General Public License version 2.1'
+                        url = 'https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html'
+                    }
+                }
+                scm {
+                    url = 'https://github.com/MinecraftModDevelopmentMods/RealisticDeposits'
+                    connection = 'scm:git:https://github.com/MinecraftModDevelopmentMods/RealisticDeposits.git'
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = 'release'
+            url = uri(providers.environmentVariable('MAVEN_UPLOAD_URL')
+                    .getOrElse('https://invalid.invalid/missing-upload-url'))
+            credentials {
+                username = providers.environmentVariable('MAVEN_UPLOAD_USERNAME').getOrElse('')
+                password = providers.environmentVariable('MAVEN_UPLOAD_PASSWORD').getOrElse('')
+            }
+        }
+    }
+}
+
+tasks.register('verifyMavenCoordinates') {
+    group = 'verification'
+    dependsOn tasks.named('generatePomFileForMavenJavaPublication')
+    doLast {
+        def pom = new XmlSlurper(false, false).parse(
+                layout.buildDirectory.file('publications/mavenJava/pom-default.xml').get().asFile)
+        if ([pom.groupId.text(), pom.artifactId.text(), pom.version.text()]
+                != ['zone.moddev.mc.realisticdeposits', 'RealisticDeposits', version.toString()]) {
+            throw new GradleException('Unexpected Maven coordinates')
+        }
+    }
+}
+
+tasks.withType(PublishToMavenRepository).configureEach {
+    dependsOn tasks.named('verifyPreparedReleaseArtifacts')
+    dependsOn tasks.named('verifyMavenCoordinates')
+    doFirst {
+        ['MAVEN_UPLOAD_URL', 'MAVEN_UPLOAD_USERNAME', 'MAVEN_UPLOAD_PASSWORD'].each { name ->
+            if (!providers.environmentVariable(name).isPresent()) {
+                throw new GradleException("${name} is required")
+            }
+        }
+        if (!providers.environmentVariable('MAVEN_UPLOAD_URL').get().startsWith('https://')) {
+            throw new GradleException('Maven publication requires an HTTPS repository')
+        }
+    }
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('auditPublicArchives')
+    dependsOn tasks.named('verifyMavenCoordinates')
+}

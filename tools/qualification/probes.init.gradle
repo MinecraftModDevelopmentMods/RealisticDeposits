@@ -1,0 +1,22 @@
+gradle.afterProject { project, state ->
+    if (project == project.rootProject && state.failure == null) {
+        def input = project.tasks.register('policyQualificationProbeInput', Jar) {
+            dependsOn project.tasks.named('testClasses')
+            from project.sourceSets.test.output.classesDirs
+            include 'zone/moddev/mc/realisticdeposits/generation/PolicyQualificationProbe*.class'
+            archiveFileName = 'policy-probe-deobf.jar'
+            destinationDirectory = project.layout.buildDirectory.dir('qualification')
+        }
+
+        def packaged = project.renamer.classes(input) {
+            map.from project.minecraft.dependency.toSrgFile
+            output = project.layout.buildDirectory.file('qualification/policy-probe.jar')
+        }
+
+        project.tasks.register('preparePolicyQualification') {
+            group = 'verification'
+            description = 'Builds the isolated packaged-server policy probe.'
+            dependsOn packaged
+        }
+    }
+}

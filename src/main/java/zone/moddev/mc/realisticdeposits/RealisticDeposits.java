@@ -26,12 +26,12 @@ import net.minecraftforge.event.RegistryEvent;
  */
 @Mod(modid = RealisticDeposits.MOD_ID, name = RealisticDeposits.NAME,
 		version = RealisticDeposits.VERSION, acceptedMinecraftVersions = "[1.10.2]",
-		dependencies = "required-after:orespawn@[4.1.0,5.0.0)",
+		dependencies = "required-after:orespawn@[4.1.3.110021,5.0.0)",
 		guiFactory = "zone.moddev.mc.realisticdeposits.client.RealisticDepositsGuiFactory")
 public final class RealisticDeposits {
 	public static final String MOD_ID = "realisticdeposits";
 	public static final String NAME = "Realistic Deposits";
-	public static final String VERSION = "0.1.0.110021";
+	public static final String VERSION = "0.1.1.110021";
 	private static final OrePatternType STRATIFORM_SEAM = StratiformSeamPattern.type()
 			.setRegistryName(OreSpawnIntegration.PATTERN_ID);
 
