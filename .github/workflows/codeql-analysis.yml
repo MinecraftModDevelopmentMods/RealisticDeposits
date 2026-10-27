@@ -51,13 +51,14 @@ jobs:
         uses: github/codeql-action/init@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4
         with:
           languages: java-kotlin
+          build-mode: manual
 
       - name: Compile production code
         run: |
           chmod +x ./gradlew
           gradle_args=(
             clean classes
-            --no-daemon --stacktrace --max-workers=2
+            --no-daemon --no-build-cache --rerun-tasks --stacktrace --max-workers=2
             -Dorg.gradle.java.installations.paths="$JAVA_HOME,$JAVA_HOME_8_X64,$JAVA_HOME_25_X64"
             -Dorg.gradle.java.installations.auto-detect=false
             -Dorg.gradle.java.installations.auto-download=false

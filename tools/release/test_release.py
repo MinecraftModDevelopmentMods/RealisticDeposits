@@ -36,6 +36,11 @@ class ReleaseContractTest(unittest.TestCase):
         self.assertLess(workflow.index("  publish_curseforge:"), workflow.index("  publish_github:"))
         self.assertIn("github-prerelease: true", workflow)
 
+    def test_codeql_observes_a_fresh_compilation(self):
+        workflow = (ROOT / ".github/workflows/codeql-analysis.yml").read_text()
+        self.assertIn("build-mode: manual", workflow)
+        self.assertIn("--no-build-cache --rerun-tasks", workflow)
+
 
 if __name__ == "__main__":
     unittest.main()
