@@ -29,6 +29,29 @@ The fixture uses a stone-filled flat world. Ordinary iron remains below Y 96;
 the test deposits are at Y 100–119, so the two sources can be counted
 independently. These are test settings, not new gameplay defaults.
 
+## Coalfield checks
+
+The coalfield candidate needs the unpublished exact-host OreSpawn API. Select
+the checksum-sealed local dependency described in the main README; the older
+public jar cannot compile this work yet. Publication remains blocked.
+
+Use `qualify_110.py --resource coal` to run the same policy/import matrix for
+coal. Its controlled beds are at Y 180-199 in a stone-filled test world, above
+ordinary background coal. This separates the two sources without changing the
+normal coalfield height range.
+
+`coal_110.py` checks normal and flat terrain, optional Mineralogy strata, inactive
+strata, structure exclusion and coal workings through first load, reload and
+later chunks. `coal_upgrade_110.py` compares disposable old iron-only worlds with
+old-build controls, including legacy coal rock layers. Neither opens a player's
+world. All helpers require new output directories and preserve failed evidence.
+
+`coal_survey_110.py` compares a widely spaced fixed sample with a matched world
+whose coalfields are disabled. It also records regional selection, approximate
+whole-field reserves and native Fortune III rewards. Its reserve estimate is
+before cave, surface and host rejection, not a guarantee of recoverable coal.
+See the [coal walkthrough](COAL_TESTING.md) for the isolated visual-test launch.
+
 ## Run it
 
 For the imported-profile editor check, use the separate

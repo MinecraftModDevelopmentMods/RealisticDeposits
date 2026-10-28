@@ -20,7 +20,7 @@ on:
       curseforge_release_level:
         description: CurseForge release level only; this does not change the GitHub Release type.
         required: true
-        default: alpha
+        default: beta
         type: choice
         options:
           - release

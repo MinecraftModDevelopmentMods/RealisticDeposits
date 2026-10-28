@@ -41,7 +41,8 @@ public final class DepositDefinition {
 	private final int regionSpacingChunks;
 	private final double selectionChance;
 	private final long salt;
-	private final StratiformSeamSettings seam;
+	private final DepositShapeSettings shape;
+	private final AbandonedMineSettings abandonedMine;
 
 	public DepositDefinition(String id, boolean enabled, String resource,
 			AlignmentMode alignment, InteractionPolicy interaction,
@@ -63,6 +64,22 @@ public final class DepositDefinition {
 			Double backgroundGenerationScale,
 			int minimumY, int maximumY, int regionSpacingChunks,
 			double selectionChance, long salt, StratiformSeamSettings seam) {
+		this(id, enabled, resource, alignment, interaction, dimensions, hosts, geomes,
+				rockFamilies, biomeIds, excludedBiomeIds, biomeDictionary, excludedBiomeDictionary,
+				backgroundGenerationScale, minimumY, maximumY, regionSpacingChunks,
+				selectionChance, salt, seam, AbandonedMineSettings.DISABLED);
+	}
+
+	public DepositDefinition(String id, boolean enabled, String resource,
+			AlignmentMode alignment, InteractionPolicy interaction,
+			Collection<String> dimensions, Collection<String> hosts,
+			Collection<String> geomes, Collection<GeologyFamily> rockFamilies,
+			Collection<String> biomeIds, Collection<String> excludedBiomeIds,
+			Collection<String> biomeDictionary, Collection<String> excludedBiomeDictionary,
+			Double backgroundGenerationScale,
+			int minimumY, int maximumY, int regionSpacingChunks,
+			double selectionChance, long salt, DepositShapeSettings seam,
+			AbandonedMineSettings abandonedMine) {
 		this.id = identifier(id, "deposit id");
 		this.enabled = enabled;
 		this.resource = identifier(resource, "resource");
@@ -94,7 +111,8 @@ public final class DepositDefinition {
 		this.regionSpacingChunks = regionSpacingChunks;
 		this.selectionChance = selectionChance;
 		this.salt = salt;
-		this.seam = Objects.requireNonNull(seam, "seam");
+		this.shape = Objects.requireNonNull(seam, "shape");
+		this.abandonedMine = Objects.requireNonNull(abandonedMine, "abandonedMine");
 		if (alignment == AlignmentMode.MASSIVE_RARE
 				&& (!this.geomes.isEmpty() || !this.rockFamilies.isEmpty())) {
 			throw new IllegalArgumentException("Massive-and-rare deposit cannot declare geology alignment: " + id);
@@ -147,7 +165,14 @@ public final class DepositDefinition {
 	public int regionSpacingChunks() { return regionSpacingChunks; }
 	public double selectionChance() { return selectionChance; }
 	public long salt() { return salt; }
-	public StratiformSeamSettings seam() { return seam; }
+	public DepositShapeSettings shape() { return shape; }
+	public boolean isCoal() { return shape instanceof CoalMeasuresSettings; }
+	public StratiformSeamSettings seam() { return (StratiformSeamSettings) shape; }
+	public CoalMeasuresSettings coal() { return (CoalMeasuresSettings) shape; }
+
+	public AbandonedMineSettings abandonedMine() {
+		return abandonedMine;
+	}
 
 	/** Fields captured in an existing world's OreSpawn profile. */
 	public String structuralFingerprint() {
@@ -156,7 +181,9 @@ public final class DepositDefinition {
 				+ sorted(biomeDictionary) + "|" + sorted(excludedBiomeDictionary) + "|"
 				+ interaction.configName() + "|"
 				+ (effectiveBackgroundGenerationScale().isPresent()
-						? effectiveBackgroundGenerationScale().getAsDouble() : "additive");
+						? effectiveBackgroundGenerationScale().getAsDouble() : "additive")
+				+ (abandonedMine.enabled() ? "|abandoned_mine:" + abandonedMine.chance() : "")
+				+ (isCoal() ? "|shape:coal_measures" : "");
 	}
 
 	/** Deterministic schema-1 representation embedded in OreSpawn pattern settings. */
@@ -189,7 +216,12 @@ public final class DepositDefinition {
 		json.addProperty("region_spacing_chunks", regionSpacingChunks);
 		json.addProperty("selection_chance", selectionChance);
 		json.addProperty("salt", salt);
-		json.add("shape", seam.toJson());
+		json.add("shape", shape.toJson());
+
+		// Leave old, opted-out world profiles byte-for-byte compatible.
+		if (abandonedMine.enabled() || abandonedMine.chance() != AbandonedMineSettings.DEFAULT_CHANCE) {
+			json.add("abandoned_mine", abandonedMine.toJson());
+		}
 		return json;
 	}
 

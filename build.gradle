@@ -33,6 +33,21 @@ if (versionParts[3] != expectedTarget) {
 
 def oreSpawnCoordinate = "curse.maven:mmd-orespawn-${project.orespawn_curse_project_id}:" \
         + project.orespawn_curse_file_id
+def localCandidate = new Properties()
+if (file('local.properties').isFile()) {
+    file('local.properties').withInputStream { localCandidate.load(it) }
+}
+def candidateProperty = { String name -> providers.gradleProperty(name)
+        .getOrElse(localCandidate.getProperty(name, '')) }
+def candidateRepository = candidateProperty('orespawnCandidateRepository')
+def candidateHash = candidateProperty('orespawnCandidateSha256').toUpperCase(Locale.ROOT)
+ext.oreSpawnCandidateMode = !candidateRepository.isEmpty()
+if (oreSpawnCandidateMode) {
+    if (!(candidateHash ==~ /[0-9A-F]{64}/)) {
+        throw new GradleException('The local OreSpawn candidate needs its complete SHA-256')
+    }
+    oreSpawnCoordinate = 'zone.moddev.mc.orespawn.candidate:OreSpawn:4.1.3.110021'
+}
 def mappedOreSpawn = renamer.dependency(oreSpawnCoordinate)
 
 configurations {
@@ -136,6 +151,12 @@ tasks.configureEach {
 }
 
 repositories {
+    if (oreSpawnCandidateMode) {
+        exclusiveContent {
+            forRepository { maven { name = 'LocalCoalCandidate'; url = uri(candidateRepository) } }
+            filter { includeGroup 'zone.moddev.mc.orespawn.candidate' }
+        }
+    }
     minecraft.mavenizer(it)
     maven fg.forgeMaven
     maven fg.minecraftLibsMaven
@@ -229,8 +250,10 @@ tasks.register('isolateEclipseProductionRuns') {
     dependsOn tasks.named('configureEclipseBuildship')
     dependsOn prepareEclipseResources
     doLast {
-        [['runClient.launch', 'runMajorIronClient.launch'],
-         ['runServer.launch', 'runMajorIronServer.launch']].each { pair ->
+        [['runClient.launch', 'runMajorIronClient.launch', 'run-major-iron'],
+         ['runServer.launch', 'runMajorIronServer.launch', 'run-major-iron'],
+         ['runClient.launch', 'runAbandonedMinesClient.launch', 'run-abandoned-mines'],
+         ['runServer.launch', 'runAbandonedMinesServer.launch', 'run-abandoned-mines']].each { pair ->
             File source = file(pair[0])
             File target = file(pair[1])
             if (!source.isFile()) {
@@ -239,11 +262,12 @@ tasks.register('isolateEclipseProductionRuns') {
             String contents = source.getText('UTF-8')
             contents = contents.replaceAll(
                     /(<stringAttribute key="org\.eclipse\.jdt\.launching\.WORKING_DIRECTORY" value=")[^"]*("\/>)/,
-                    '$1' + file('run-major-iron').absolutePath.replace('\\', '\\\\') + '$2')
+                    '$1' + file(pair[2]).absolutePath.replace('\\', '\\\\') + '$2')
             target.setText(contents.replace('\r\n', '\n'), 'UTF-8')
         }
         ['runClient.launch', 'runServer.launch',
          'runMajorIronClient.launch', 'runMajorIronServer.launch',
+         'runAbandonedMinesClient.launch', 'runAbandonedMinesServer.launch',
          'runTestClient.launch', 'runTestServer.launch'].each { name ->
             File launch = file(name)
             if (!launch.isFile()) {
@@ -279,7 +303,8 @@ tasks.register('isolateEclipseProductionRuns') {
                     programArguments[0][1] + arguments + programArguments[0][3])
 
             if ((name == 'runClient.launch' || name == 'runServer.launch'
-                    || name == 'runMajorIronClient.launch' || name == 'runMajorIronServer.launch')
+                    || name == 'runMajorIronClient.launch' || name == 'runMajorIronServer.launch'
+                    || name == 'runAbandonedMinesClient.launch' || name == 'runAbandonedMinesServer.launch')
                     && !contents.contains('org.eclipse.jdt.launching.ATTR_EXCLUDE_TEST_CODE')) {
                 contents = contents.replace('</launchConfiguration>',
                         '  <booleanAttribute key="org.eclipse.jdt.launching.ATTR_EXCLUDE_TEST_CODE" value="true"/>\n'
@@ -306,7 +331,8 @@ tasks.register('verifyEclipseProductionClasspath') {
             throw new GradleException('Eclipse metadata is not version-expanded')
         }
         ['runClient.launch', 'runServer.launch',
-         'runMajorIronClient.launch', 'runMajorIronServer.launch'].each { name ->
+         'runMajorIronClient.launch', 'runMajorIronServer.launch',
+         'runAbandonedMinesClient.launch', 'runAbandonedMinesServer.launch'].each { name ->
             String contents = file(name).getText('UTF-8').replace('\\', '/')
             ['src/test', 'bin/test', 'build/classes/java/test', 'junit-',
              'opentest4j-', 'junit-platform-'].each { forbidden ->
@@ -318,7 +344,8 @@ tasks.register('verifyEclipseProductionClasspath') {
                     || !contents.contains('PROJECT_ATTR" value="RealisticDeposits"')) {
                 throw new GradleException("${name} is not a production-only RealisticDeposits launch")
             }
-            if ((name == 'runServer.launch' || name == 'runMajorIronServer.launch')
+            if ((name == 'runServer.launch' || name == 'runMajorIronServer.launch'
+                    || name == 'runAbandonedMinesServer.launch')
                     && (!contents.contains(' -- nogui"') || contents.contains('--nogui'))) {
                 throw new GradleException('Forge 1.10 server launch must use bare nogui')
             }
@@ -326,9 +353,13 @@ tasks.register('verifyEclipseProductionClasspath') {
                     && !contents.contains('run-major-iron')) {
                 throw new GradleException("${name} does not use the isolated major-iron directory")
             }
+            if (name.startsWith('runAbandonedMines') && !contents.contains('run-abandoned-mines')) {
+                throw new GradleException("${name} does not use the isolated abandoned-mine directory")
+            }
         }
         ['runClient.launch', 'runServer.launch',
          'runMajorIronClient.launch', 'runMajorIronServer.launch',
+         'runAbandonedMinesClient.launch', 'runAbandonedMinesServer.launch',
          'runTestClient.launch', 'runTestServer.launch'].each { name ->
             String contents = file(name).getText('UTF-8')
             ['cache', 'metadata', 'to-srg', 'to-obf'].each { flag ->
@@ -337,6 +368,24 @@ tasks.register('verifyEclipseProductionClasspath') {
                 }
             }
         }
+    }
+}
+
+tasks.register('prepareAbandonedMinesManual') {
+    group = 'verification'
+    description = 'Prepares a separate mine-testing configuration and Eclipse launches.'
+    dependsOn tasks.named('verifyEclipseProductionClasspath')
+    doLast {
+        File catalog = file('run-abandoned-mines/config/realisticdeposits/deposits/vanilla.json')
+        if (!catalog.exists()) {
+            def settings = new groovy.json.JsonSlurper().parse(
+                    file('src/main/resources/assets/realisticdeposits/defaults/vanilla.json'), 'UTF-8')
+            settings.deposits.each { it.abandoned_mine = [enabled: true, chance: 1.0] }
+            catalog.parentFile.mkdirs()
+            catalog.setText(groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(settings)) + '\n', 'UTF-8')
+        }
+        logger.lifecycle('Use runAbandonedMinesClient.launch. Existing manual settings and saves were not changed.')
+        logger.lifecycle('The walkthrough is tools/qualification/MINES_TESTING.md.')
     }
 }
 
@@ -403,7 +452,7 @@ tasks.register('verifyProjectIdentity') {
                 || project.forge_version != '12.18.3.2511'
                 || project.orespawn_version != '4.1.3.110021'
                 || project.orespawn_version_range != '[4.1.3.110021,5.0.0)'
-                || oreSpawnCoordinate != 'curse.maven:mmd-orespawn-245586:9335434'
+                || (!oreSpawnCandidateMode && oreSpawnCoordinate != 'curse.maven:mmd-orespawn-245586:9335434')
                 || project.orespawn_sha256
                 != 'FA1F4CAE66374E32162EC9543FF2BFBA236934C9E44D3F6AD882BC00761C15EF') {
             throw new GradleException('Unexpected target or OreSpawn dependency identity')
@@ -448,9 +497,10 @@ tasks.register('verifyOreSpawnDependency') {
         File oreSpawnFile = configurations.oreSpawnRelease.singleFile
         String actualHash = java.security.MessageDigest.getInstance('SHA-256')
                 .digest(oreSpawnFile.bytes).encodeHex().toString().toUpperCase()
-        if (actualHash != project.orespawn_sha256) {
+        String expectedHash = oreSpawnCandidateMode ? candidateHash : project.orespawn_sha256
+        if (actualHash != expectedHash) {
             throw new GradleException("OreSpawn SHA-256 is ${actualHash}, expected "
-                    + project.orespawn_sha256)
+                    + expectedHash)
         }
         java.util.zip.ZipFile archive = new java.util.zip.ZipFile(oreSpawnFile)
         try {
@@ -458,6 +508,11 @@ tasks.register('verifyOreSpawnDependency') {
             def providerEntry = archive.getEntry('zone/moddev/mc/orespawn/api/WorldgenProvider.class')
             if (apiEntry == null || providerEntry == null) {
                 throw new GradleException('OreSpawn is missing the 4.1 extension API')
+            }
+            def dimensionBuilder = archive.getEntry('zone/moddev/mc/orespawn/api/WorldgenProvider$OreDimensionDefinition$Builder.class')
+            if (dimensionBuilder == null || !new String(archive.getInputStream(dimensionBuilder).bytes,
+                    java.nio.charset.StandardCharsets.ISO_8859_1).contains('hostState')) {
+                throw new GradleException('Coalfields need the exact-host OreSpawn API. Select the sealed local candidate; the public release pin has not changed.')
             }
             def metadata = new groovy.json.JsonSlurper().parse(
                     archive.getInputStream(archive.getEntry('mcmod.info')))
@@ -591,3 +646,4 @@ tasks.named('check') {
 }
 
 apply from: 'gradle/release.gradle'
+apply from: 'gradle/coal-manual.gradle'

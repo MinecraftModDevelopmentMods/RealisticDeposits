@@ -5,6 +5,7 @@
 /LICENSE text eol=lf
 /gradlew text eol=lf
 *.bat text eol=crlf
+*.cfg text eol=lf
 *.gradle text eol=lf
 *.info text eol=lf
 *.java text eol=lf

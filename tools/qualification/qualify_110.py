@@ -16,6 +16,7 @@ FORGE_JAR = "forge-1.10.2-12.18.3.2511-universal.jar"
 POLICIES = ("additive", "hybrid-default", "hybrid-15", "replacement")
 ORIGINS = ("native", "os1", "os3", "existing-override")
 DEPOSIT_ID = "realisticdeposits:deposit/realisticdeposits/qualification_iron"
+RESOURCE_KEY = "iron_ore"
 
 
 def digest(path):
@@ -47,7 +48,7 @@ def write_json(path, value):
 def imported_rule(frequency=6.5):
     return {
         "enabled": True,
-        "block": "minecraft:iron_ore",
+        "block": "minecraft:" + RESOURCE_KEY,
         "source_mod": "orespawn",
         "native_generation": False,
         "retrogen": False,
@@ -76,7 +77,7 @@ def prepare(args, name, origin, policy, managed, port, bootstrap=False):
 
     settings = (
         "level-name=world\nlevel-seed=3346071746553592696\nlevel-type=FLAT\n"
-        "generator-settings=3;minecraft:bedrock,127*minecraft:stone,minecraft:grass;1;decoration\n"
+        f"generator-settings=3;minecraft:bedrock,{239 if RESOURCE_KEY == 'coal_ore' else 127}*minecraft:stone,minecraft:grass;1;decoration\n"
         f"server-ip=127.0.0.1\nserver-port={port}\nonline-mode=false\n"
         "generate-structures=false\nview-distance=3\nmax-tick-time=-1\nallow-nether=false\n"
         "spawn-animals=false\nspawn-monsters=false\n"
@@ -92,12 +93,26 @@ def prepare(args, name, origin, policy, managed, port, bootstrap=False):
         write_json(root / "config/orespawn-worldgen.json", global_config)
     catalog = json.loads((Path(__file__).parent / "deposit.json").read_text(encoding="utf-8"))
     definition = catalog["deposits"][0]
+    definition["id"] = "realisticdeposits:qualification_" + RESOURCE_KEY.removesuffix("_ore")
+    definition["resource"] = "minecraft:" + RESOURCE_KEY
+    if RESOURCE_KEY == "coal_ore":
+        # Keep the controlled deposit above vanilla coal so both supplies can be counted separately.
+        definition.update(min_y=180, max_y=199)
+        definition["shape"] = {
+            "type": "coal_measures", "strike_length": [64, 96], "down_dip_width": [16, 24],
+            "beds": [2, 2], "thickness": [1, 1], "rock_interval": [2, 2],
+            "maximum_dip_degrees": 0, "fold_amplitude": 0, "maximum_fault_throw": 0,
+        }
     definition["interaction"] = "hybrid" if policy.startswith("hybrid") else policy
 
     if policy == "hybrid-15":
         definition["background_generation_scale"] = 0.15
 
     write_json(root / "config/realisticdeposits/deposits/vanilla.json", catalog)
+    coal = json.loads((Path(__file__).parents[2] / "src/main/resources/assets/realisticdeposits/defaults/coal.json")
+                      .read_text(encoding="utf-8"))
+    coal["deposits"][0]["enabled"] = False
+    write_json(root / "config/realisticdeposits/deposits/coal.json", coal)
     sources = {}
 
     if origin != "native":
@@ -111,7 +126,7 @@ def prepare(args, name, origin, policy, managed, port, bootstrap=False):
         if origin == "os1":
             source = root / "config/orespawn/orespawn.json"
             write_json(source, {"dimensions": [{"dimension": "0", "ores": [{
-                "blockID": "minecraft:iron_ore", "size": 5, "variation": 0,
+                "blockID": "minecraft:" + RESOURCE_KEY, "size": 5, "variation": 0,
                 "frequency": 3.25, "minHeight": 12, "maxHeight": 19,
             }]}]})
         else:
@@ -121,12 +136,12 @@ def prepare(args, name, origin, policy, managed, port, bootstrap=False):
                 "dimensions": [0], "biomes": {"excludes": []},
                 "parameters": {"frequency": 3.25, "size": 5, "variation": 0,
                                "minHeight": 12, "maxHeight": 19},
-                "blocks": [{"name": "minecraft:iron_ore", "chance": 100}],
+                "blocks": [{"name": "minecraft:" + RESOURCE_KEY, "chance": 100}],
             }
             gold = copy.deepcopy(iron)
             gold["enabled"] = False
             gold["blocks"] = [{"name": "minecraft:gold_ore", "chance": 100}]
-            write_json(source, {"version": "2.0", "spawns": {"iron_ore": iron, "gold_ore": gold}})
+            write_json(source, {"version": "2.0", "spawns": {RESOURCE_KEY: iron, "gold_ore": gold}})
 
         sources[source] = digest(source)
 
@@ -136,7 +151,7 @@ def prepare(args, name, origin, policy, managed, port, bootstrap=False):
         disabled.update(enabled=False, block="minecraft:gold_ore")
         write_json(override, {
             "schema_version": 4, "provider_modid": "orespawn", "provider_revision": 1,
-            "ores": {"orespawn:legacy/iron_ore": imported_rule(),
+            "ores": {"orespawn:legacy/" + RESOURCE_KEY: imported_rule(),
                      "orespawn:legacy/gold_ore": disabled},
         })
         sources[override] = digest(override)
@@ -170,6 +185,7 @@ def run(args, root, phase, extra_properties=None, label=None):
     label = label or phase
     command = [str(args.java), "-Xms256m", "-Xmx2G", "-XX:ActiveProcessorCount=2",
                "-Drd.qualification.enabled=true", f"-Drd.qualification.phase={phase}"]
+    command.append("-Drd.qualification.resource=" + RESOURCE_KEY.removesuffix("_ore"))
     command.extend(f"-D{key}={value}" for key, value in (extra_properties or {}).items())
     command.extend(["-jar", FORGE_JAR, "nogui"])
 
@@ -211,6 +227,9 @@ def check_profile(report, origin, policy, managed):
     profile = report["profile"]
     assert profile["manage_vanilla_ores"] == managed, "World management setting was replaced"
     owned = {key: value for key, value in profile["ores"].items() if key.startswith("realisticdeposits:")}
+    default_coal = owned.pop("realisticdeposits:deposit/realisticdeposits/overworld_coal_measures", None)
+    if default_coal is not None:
+        assert default_coal["enabled"] is False, "The unrelated default coalfield must remain disabled"
     assert set(owned) == {DEPOSIT_ID}, "Duplicate or missing Realistic Deposits rule"
     rule = owned[DEPOSIT_ID]
     assert rule["retrogen"] is False
@@ -219,7 +238,7 @@ def check_profile(report, origin, policy, managed):
     assert dimension.get("background_generation_scale") == expected_scale
 
     if origin != "native":
-        imported_id = "orespawn:legacy/minecraft_iron_ore_0" if origin == "os1" else "orespawn:legacy/iron_ore"
+        imported_id = "orespawn:legacy/minecraft_" + RESOURCE_KEY + "_0" if origin == "os1" else "orespawn:legacy/" + RESOURCE_KEY
         imported = profile["ores"][imported_id]
         assert imported["enabled"] is True and imported["retrogen"] is False
         placement = imported["dimensions"]["minecraft:overworld"]
@@ -379,14 +398,18 @@ def check_matrix(results):
 
 
 def main():
+    global RESOURCE_KEY, DEPOSIT_ID
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("java", "runtime", "mod", "orespawn", "probe", "output"):
         parser.add_argument("--" + name, required=True, type=Path)
     parser.add_argument("--jobs", type=int, default=2)
+    parser.add_argument("--resource", choices=("iron", "coal"), default="iron")
     parser.add_argument("--only", default="", help="Run matching case names for focused diagnostics")
     parser.add_argument("--local-orespawn-sha256",
                         help="Explicit checksum for testing an unpublished local OreSpawn fix")
     args = parser.parse_args()
+    RESOURCE_KEY = args.resource + "_ore"
+    DEPOSIT_ID = "realisticdeposits:deposit/realisticdeposits/qualification_" + args.resource
 
     orespawn_sha256 = checked_orespawn_sha256(args.orespawn, args.local_orespawn_sha256)
     if "eula=true" not in (args.runtime / "eula.txt").read_text(encoding="utf-8"):

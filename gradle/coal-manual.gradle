@@ -1,0 +1,45 @@
+// Coal tests use their own saves and settings, never the ordinary run directory.
+tasks.named('isolateEclipseProductionRuns') {
+    doLast {
+        [['runClient.launch', 'runCoalMeasuresClient.launch'],
+         ['runServer.launch', 'runCoalMeasuresServer.launch']].each { pair ->
+            String contents = file(pair[0]).getText('UTF-8')
+            contents = contents.replaceAll(
+                    /(<stringAttribute key="org\.eclipse\.jdt\.launching\.WORKING_DIRECTORY" value=")[^"]*("\/>)/,
+                    '$1' + file('run-coal-measures').absolutePath.replace('\\', '\\\\') + '$2')
+            file(pair[1]).setText(contents.replace('\r\n', '\n'), 'UTF-8')
+        }
+    }
+}
+
+tasks.named('verifyEclipseProductionClasspath') {
+    doLast {
+        ['runCoalMeasuresClient.launch', 'runCoalMeasuresServer.launch'].each { name ->
+            String contents = file(name).getText('UTF-8').replace('\\', '/')
+            if (!contents.contains('run-coal-measures') || !contents.contains('ATTR_EXCLUDE_TEST_CODE')) {
+                throw new GradleException("${name} must use isolated, production-only output")
+            }
+            ['src/test', 'bin/test', 'junit-', 'coal-probe', 'mine-probe'].each { forbidden ->
+                if (contents.contains(forbidden)) throw new GradleException("${name} exposes ${forbidden}")
+            }
+        }
+    }
+}
+
+tasks.register('prepareCoalMeasuresManual') {
+    group = 'verification'
+    description = 'Prepares a separate coalfield test and its Eclipse launches.'
+    dependsOn tasks.named('verifyEclipseProductionClasspath')
+    doLast {
+        File target = file('run-coal-measures/config/realisticdeposits/deposits/coal.json')
+        if (!target.exists()) {
+            def coal = new groovy.json.JsonSlurper().parse(
+                    file('src/main/resources/assets/realisticdeposits/defaults/coal.json'), 'UTF-8')
+            coal.deposits.each { it.abandoned_mine = [enabled: true, chance: 1.0] }
+            target.parentFile.mkdirs()
+            target.setText(groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(coal)) + '\n', 'UTF-8')
+        }
+        logger.lifecycle('Use runCoalMeasuresClient.launch and tools/qualification/COAL_TESTING.md.')
+        logger.lifecycle('Existing settings and saves were left alone. The test profile attempts old workings at every suitable coalfield.')
+    }
+}

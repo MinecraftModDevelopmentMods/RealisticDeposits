@@ -77,6 +77,7 @@ public final class RealisticDepositsRuntime {
 		File deposits = new File(root, "deposits");
 		File defaultCatalog = new File(deposits, "vanilla.json");
 		createDefault(defaultCatalog);
+		createDefault(new File(deposits, "coal.json"), "/assets/realisticdeposits/defaults/coal.json");
 		List<File> files = jsonFiles(deposits);
 		List<DepositCatalog> catalogs = new ArrayList<>();
 		List<DepositDefinition> definitions = new ArrayList<>();
@@ -188,6 +189,7 @@ public final class RealisticDepositsRuntime {
 	private static void validateResourcePolicies(List<DepositDefinition> definitions) {
 		Map<String, String> contracts = new LinkedHashMap<>();
 		for (DepositDefinition definition : definitions) {
+			if (!definition.enabled()) continue;
 			for (String dimension : definition.dimensions()) {
 				String key = definition.resource() + "@" + dimension;
 				String contract = definition.interaction().configName() + ":"
@@ -223,13 +225,17 @@ public final class RealisticDepositsRuntime {
 	}
 
 	private static void createDefault(File target) {
+		createDefault(target, DEFAULT_RESOURCE);
+	}
+
+	private static void createDefault(File target, String resource) {
 		if (target.isFile()) return;
 		File parent = target.getParentFile();
 		if (!parent.isDirectory() && !parent.mkdirs()) {
 			throw new IllegalStateException("Could not create configuration directory " + parent);
 		}
-		try (InputStream input = RealisticDepositsRuntime.class.getResourceAsStream(DEFAULT_RESOURCE)) {
-			if (input == null) throw new IllegalStateException("Missing packaged default " + DEFAULT_RESOURCE);
+		try (InputStream input = RealisticDepositsRuntime.class.getResourceAsStream(resource)) {
+			if (input == null) throw new IllegalStateException("Missing packaged default " + resource);
 			try (OutputStream output = new FileOutputStream(target)) {
 				byte[] buffer = new byte[8192];
 				int count;
@@ -243,7 +249,9 @@ public final class RealisticDepositsRuntime {
 	private static List<File> jsonFiles(File directory) {
 		List<File> result = new ArrayList<>();
 		collectJson(directory, result);
-		result.sort(Comparator.comparing(File::getPath));
+		// Keep existing catalogue order; the new default must not become the first deposit.
+		result.sort(Comparator.comparingInt((File file) -> "coal.json".equals(file.getName()) ? 1 : 0)
+				.thenComparing(File::getPath));
 		return result;
 	}
 

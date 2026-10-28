@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "catalog": "realisticdeposits:coal",
+  "deposits": [
+    {
+      "id": "realisticdeposits:overworld_coal_measures",
+      "enabled": true,
+      "resource": "minecraft:coal_ore",
+      "alignment": "geome_aligned",
+      "interaction": "hybrid",
+      "background_generation_scale": 0.15,
+      "dimensions": ["minecraft:overworld"],
+      "hosts": ["minecraft:stone", "minecraft:sandstone", "mineralogy:shale", "mineralogy:siltstone", "mineralogy:conglomerate"],
+      "geomes": ["orespawn:sedimentary_basin", "orespawn:wetland_basin", "orespawn:stable_craton", "orespawn:coastal_shelf", "orespawn:mountain_belt"],
+      "min_y": 8,
+      "max_y": 128,
+      "region_spacing_chunks": 32,
+      "selection_chance": 0.5,
+      "salt": 2685821657736338717,
+      "abandoned_mine": {"enabled": false, "chance": 0.15},
+      "shape": {
+        "type": "coal_measures",
+        "strike_length": [384, 768],
+        "down_dip_width": [128, 256],
+        "beds": [2, 4],
+        "thickness": [1, 3],
+        "rock_interval": [4, 12],
+        "maximum_dip_degrees": 4.0,
+        "fold_amplitude": 3.0,
+        "maximum_fault_throw": 4
+      }
+    }
+  ]
+}

@@ -10,7 +10,7 @@ import zone.moddev.mc.realisticdeposits.model.StratiformSeamSettings;
  * fault displacement and a discontinuous lower-grade halo without Minecraft
  * world access.
  */
-public final class StratiformSeamBody {
+public final class StratiformSeamBody implements MineableDepositBody {
 	private static final long STRUCTURE_SALT = 0x3C6EF372FE94F82BL;
 	private static final int MAXIMUM_FAULT_VERTICAL_OFFSET = 12;
 	private static final int EMPTY_MINIMUM_Y = 1;
@@ -130,6 +130,17 @@ public final class StratiformSeamBody {
 	public int strikeLength() { return strikeLength; }
 	public int downDipWidth() { return downDipWidth; }
 	public BlockBounds bounds() { return bounds; }
+
+	/** Finds the seam's main mining route without sampling the individual ore blocks. */
+	public MinePoint miningRoutePoint(double along, double lateralOffset) {
+		double bentAcross = meanderAt(along) + lateralOffset;
+		double across = bentAcross + segmentLateralOffset[segmentAt(along)] + bendAmplitude
+				* Math.sin((along / bendWavelength) * Math.PI * 2.0D + bendPhase);
+
+		return new MinePoint((int) Math.floor(centerX + along * strikeCosine - across * strikeSine),
+				(int) Math.floor(planeYAt(along, bentAcross)),
+				(int) Math.floor(centerZ + along * strikeSine + across * strikeCosine));
+	}
 
 	/** Lowest Y that can contain this body's folded horizon in this column. */
 	public int minimumCandidateYAt(int x, int z) {
