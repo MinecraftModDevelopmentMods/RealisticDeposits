@@ -54,7 +54,7 @@ def main():
     if hashlib.sha256(forge.read_bytes()).hexdigest().upper() != FORGE_HASH:
         raise AssertionError("The installed Forge server changed")
     (runtime / "eula.txt").write_text("eula=true\n")
-    orespawn = output / "OreSpawn-4.1.3.110021.jar"
+    orespawn = output / f"OreSpawn-{properties['orespawn_version']}.jar"
     file_id = properties["orespawn_curse_file_id"]
     download(f"https://cursemaven.com/curse/maven/mmd-orespawn-245586/{file_id}/"
              f"mmd-orespawn-245586-{file_id}.jar", orespawn, properties["orespawn_sha256"])

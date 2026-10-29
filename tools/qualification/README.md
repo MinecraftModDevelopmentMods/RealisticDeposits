@@ -31,9 +31,9 @@ independently. These are test settings, not new gameplay defaults.
 
 ## Coalfield checks
 
-The coalfield candidate needs the unpublished exact-host OreSpawn API. Select
-the checksum-sealed local dependency described in the main README; the older
-public jar cannot compile this work yet. Publication remains blocked.
+Coalfield checks use the published OreSpawn 4.1.4.110021 dependency and its
+official checksum. The exact-host API is included in that release; a local
+OreSpawn build is not needed.
 
 Use `qualify_110.py --resource coal` to run the same policy/import matrix for
 coal. Its controlled beds are at Y 180-199 in a stone-filled test world, above
@@ -73,10 +73,11 @@ Then run `python tools/qualification/qualify_110.py` with these arguments:
 | `--java` | Java 8 executable |
 | `--runtime` | An official Forge 1.10.2-12.18.3.2511 server installation, including libraries and an already accepted EULA |
 | `--mod` | The built Realistic Deposits release jar |
-| `--orespawn` | Public OreSpawn 4.1.3.110021; its official checksum is checked |
+| `--orespawn` | Public OreSpawn 4.1.4.110021; its official checksum is checked |
 | `--probe` | `build/qualification/policy-probe.jar` |
 | `--output` | A new disposable evidence directory, preferably under an ignored `run-*` folder |
 | `--jobs` | Concurrent servers; defaults to two |
+| `--base-port` | First loopback port; use different ranges if running coal and iron matrices together |
 
 Supply absolute paths. No third-party Python packages are needed. On Windows,
 servers run without console windows, with literal `nogui`, on separate

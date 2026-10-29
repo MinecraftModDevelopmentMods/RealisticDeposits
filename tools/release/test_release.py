@@ -14,8 +14,10 @@ class ReleaseContractTest(unittest.TestCase):
                           (ROOT / "gradle.properties").read_text().splitlines()
                           if "=" in line and not line.startswith("#"))
         self.assertEqual("0.2.0.110021", properties["mod_version"])
-        self.assertEqual("4.1.3.110021", properties["orespawn_version"])
-        self.assertEqual("9335434", properties["orespawn_curse_file_id"])
+        self.assertEqual("4.1.4.110021", properties["orespawn_version"])
+        self.assertEqual("9356289", properties["orespawn_curse_file_id"])
+        self.assertEqual("DB254E9E865685A74262DE9D469A006AB3C8053573CC6136FD4A8591AD806CA3",
+                         properties["orespawn_sha256"])
         self.assertEqual("1689703", properties["curseforge_project_id"])
 
     def test_beta_is_the_default_curseforge_channel(self):
@@ -43,6 +45,7 @@ class ReleaseContractTest(unittest.TestCase):
         self.assertLess(workflow.index("  publish_maven:"), workflow.index("  publish_curseforge:"))
         self.assertLess(workflow.index("  publish_curseforge:"), workflow.index("  publish_github:"))
         self.assertIn("github-prerelease: true", workflow)
+        self.assertIn("GitHub Release type: prerelease", workflow)
 
     def test_codeql_observes_a_fresh_compilation(self):
         workflow = (ROOT / ".github/workflows/codeql-analysis.yml").read_text()

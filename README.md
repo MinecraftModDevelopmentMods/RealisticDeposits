@@ -16,11 +16,10 @@ projects.
 The project starts with Minecraft 1.10.2 and is intended to follow the
 maintained OreSpawn branches across Forge and NeoForge.
 
-The next update is a beta, adding coalfields and optional abandoned workings
+This beta adds coalfields and optional abandoned workings
 alongside the existing iron districts. Back up your world before updating.
 
-The coalfield work currently needs an unpublished OreSpawn API addition. It
-is for local testing, not distribution; see [building from source](#building-from-source).
+Coalfields use the exact-host API in the published OreSpawn 4.1.4.110021 release.
 
 ## Current features
 
@@ -57,14 +56,9 @@ The current branch requires:
 
 - Minecraft 1.10.2;
 - Forge 12.18.3.2511 or a compatible newer Forge 12 build;
-- [MMD OreSpawn 4.1.3.110021](https://www.curseforge.com/minecraft/mc-mods/mmd-orespawn/files/9335434)
+- [MMD OreSpawn 4.1.4.110021](https://www.curseforge.com/minecraft/mc-mods/mmd-orespawn/files/9356289)
   or a newer compatible 1.10.2 release, but earlier than OreSpawn 5;
 - Java 8 to run Minecraft.
-
-For this coalfield development build, use the explicitly selected local
-OreSpawn candidate instead of the public jar above. It retains the same version
-number but contains the new exact-host API. The build checks its checksum and
-prevents publication while that candidate is selected.
 
 Realistic Deposits is independent of the similarly themed Large Ore Deposits
 mod and does not require it.
@@ -154,21 +148,14 @@ World Settings screen.
 The Gradle build runs on Java 17 and compiles the mod for Java 8 using the
 configured toolchain. ForgeGradle's Minecraft preparation utility uses Java 25.
 
-The released alpha uses `curse.maven:mmd-orespawn-245586:9335434`, the public
-OreSpawn 4.1.3.110021 jar. That checksum-checked pin is retained for provenance,
-but it does not contain the exact-host builder needed by this coalfield preview.
-To build this checkout, select a sealed local candidate repository in ignored
-`local.properties`:
+OreSpawn 4.1.4.110021 is downloaded from Curse Maven, checked against its
+official checksum and mapped for development automatically. The exact dependency
+is `curse.maven:mmd-orespawn-245586:9356289`. No sibling checkout, local jar or
+`local.properties` file is needed.
 
-```properties
-orespawnCandidateRepository=path/to/local/candidate-repository
-orespawnCandidateSha256=the-complete-candidate-sha256
-```
-
-The repository must supply `zone.moddev.mc.orespawn.candidate:OreSpawn:4.1.3.110021`.
-The candidate is mapped for development automatically. Do not distribute this
-combination: OreSpawn must release the API first, then this branch can pin the
-new public file and checksum.
+An optional local-candidate override is still available for development, but it
+must name an isolated repository and a complete checksum. Publication is blocked
+whenever that override is selected. Normal builds use the public release.
 
 On Windows, run:
 

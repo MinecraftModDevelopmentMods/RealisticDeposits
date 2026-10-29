@@ -1,7 +1,7 @@
 # Try the coalfields
 
-Use the local OreSpawn candidate already selected for this development checkout.
-Do not copy these jars into an important instance or use an original world.
+Use the published OreSpawn dependency selected by this checkout. Keep these
+checks in disposable worlds, separate from any important instance or save.
 
 1. Run the Gradle task `prepareCoalMeasuresManual`, then refresh the Gradle
    project in Eclipse.
@@ -32,8 +32,8 @@ workings setting was enabled before you created the world.
 The packaged `coal_110.py` helper separately checks standalone terrain,
 Mineralogy strata and reloads. Its reports can be drawn with `coal_maps.py`
 (Pillow required) to compare a labelled cross-section with the in-game view.
-The helper always requires a new evidence directory and the exact OreSpawn
-candidate checksum. Test probes never belong in ordinary launches or public jars.
+The helper always requires a new evidence directory and checks the official
+OreSpawn release checksum. Test probes never belong in ordinary launches or public jars.
 
 ## What the fixed-seed survey found
 

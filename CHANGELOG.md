@@ -2,7 +2,7 @@
 
 ## 0.2.0.110021
 
-Beta candidate; not yet released.
+Beta for Minecraft 1.10.2.
 
 - Add large coalfields with two to four thin beds, shared folds and faults,
   gradual thinning and local rock partings. Keep 15% background coal for early
@@ -12,8 +12,8 @@ Beta candidate; not yet released.
   terrain replacement. Keep granite, diorite, andesite and unsuitable hosts out.
 - Keep the coal catalogue separate from iron. Preserve existing settings,
   world profiles, legacy coal layers and previously generated terrain.
-- Use a checksum-checked local OreSpawn exact-host API candidate for now;
-  publication remains blocked until that API has a public release.
+- Require OreSpawn 4.1.4.110021 so coal replaces only the intended rock variants.
+  Download and check the release automatically.
 
 - Add optional abandoned workings to deposits: a surface shaft, ladder access,
   short seam-following galleries, timber supports, broken rails, cobwebs and

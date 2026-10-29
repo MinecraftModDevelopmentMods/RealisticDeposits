@@ -20,7 +20,7 @@ class ProjectIdentityTest {
 		net.minecraftforge.fml.common.Mod annotation = RealisticDeposits.class.getAnnotation(
 				net.minecraftforge.fml.common.Mod.class);
 		assertTrue(annotation.guiFactory().endsWith("RealisticDepositsGuiFactory"));
-		assertEquals("required-after:orespawn@[4.1.3.110021,5.0.0)", annotation.dependencies());
+		assertEquals("required-after:orespawn@[4.1.4.110021,5.0.0)", annotation.dependencies());
 	}
 
 	@Test
@@ -31,11 +31,11 @@ class ProjectIdentityTest {
 			properties.load(input);
 		}
 
-		assertEquals("4.1.3.110021", properties.getProperty("orespawn_version"));
-		assertEquals("[4.1.3.110021,5.0.0)", properties.getProperty("orespawn_version_range"));
+		assertEquals("4.1.4.110021", properties.getProperty("orespawn_version"));
+		assertEquals("[4.1.4.110021,5.0.0)", properties.getProperty("orespawn_version_range"));
 		assertEquals("245586", properties.getProperty("orespawn_curse_project_id"));
-		assertEquals("9335434", properties.getProperty("orespawn_curse_file_id"));
-		assertEquals("FA1F4CAE66374E32162EC9543FF2BFBA236934C9E44D3F6AD882BC00761C15EF",
+		assertEquals("9356289", properties.getProperty("orespawn_curse_file_id"));
+		assertEquals("DB254E9E865685A74262DE9D469A006AB3C8053573CC6136FD4A8591AD806CA3",
 				properties.getProperty("orespawn_sha256"));
 	}
 }

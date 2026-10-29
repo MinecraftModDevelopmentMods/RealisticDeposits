@@ -1,4 +1,4 @@
-"""Check coal beds on disposable Forge servers with an explicitly sealed OreSpawn jar."""
+"""Check coal beds on disposable Forge servers with the checksum-verified OreSpawn jar."""
 
 import argparse
 import copy
@@ -76,7 +76,7 @@ def main():
         parser.add_argument("--" + name, required=True, type=Path)
     parser.add_argument("--mineralogy", type=Path)
     parser.add_argument("--geology-profile", type=Path, help="Read-only reference for the inactive-strata fixture")
-    parser.add_argument("--local-orespawn-sha256", required=True)
+    parser.add_argument("--local-orespawn-sha256", help="Explicit checksum for an optional unpublished test candidate")
     parser.add_argument("--cases", nargs="+", choices=("standalone", "normal", "mineralogy", "inactive", "legacy", "workings", "structure"),
                         default=("standalone", "normal", "mineralogy"))
     args = parser.parse_args()

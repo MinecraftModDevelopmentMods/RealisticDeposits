@@ -30,7 +30,7 @@ import net.minecraftforge.fml.common.registry.GameRegistry;
  */
 @Mod(modid = RealisticDeposits.MOD_ID, name = RealisticDeposits.NAME,
 		version = RealisticDeposits.VERSION, acceptedMinecraftVersions = "[1.10.2]",
-		dependencies = "required-after:orespawn@[4.1.3.110021,5.0.0)",
+		dependencies = "required-after:orespawn@[4.1.4.110021,5.0.0)",
 		guiFactory = "zone.moddev.mc.realisticdeposits.client.RealisticDepositsGuiFactory")
 public final class RealisticDeposits {
 	public static final String MOD_ID = "realisticdeposits";

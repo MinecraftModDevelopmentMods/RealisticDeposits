@@ -4,8 +4,8 @@ Coalfields contain several thin beds separated by rock, rather than a cloud of
 coal blocks. The beds share their folds and fault offsets. They thin towards
 the edges, and a local rock parting can split a thicker bed.
 
-This is local development work. It needs the unpublished OreSpawn exact-host
-API candidate described in the [build instructions](../README.md#building-from-source).
+Coalfields require OreSpawn 4.1.4.110021 or a later compatible 1.10.2 release.
+Its exact-host API keeps plain stone separate from granite, diorite and andesite.
 
 ## Where to look
 

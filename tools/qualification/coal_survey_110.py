@@ -14,7 +14,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("java", "runtime", "mod", "orespawn", "probe", "output"):
         parser.add_argument("--" + name, required=True, type=Path)
-    parser.add_argument("--local-orespawn-sha256", required=True)
+    parser.add_argument("--local-orespawn-sha256", help="Explicit checksum for an optional unpublished test candidate")
     args = parser.parse_args()
     args.mineralogy = None
     args.port = 48775

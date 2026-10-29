@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 
-ORESPAWN_SHA256 = "FA1F4CAE66374E32162EC9543FF2BFBA236934C9E44D3F6AD882BC00761C15EF"
+ORESPAWN_SHA256 = "DB254E9E865685A74262DE9D469A006AB3C8053573CC6136FD4A8591AD806CA3"
 FORGE_JAR = "forge-1.10.2-12.18.3.2511-universal.jar"
 POLICIES = ("additive", "hybrid-default", "hybrid-15", "replacement")
 ORIGINS = ("native", "os1", "os3", "existing-override")
@@ -160,7 +160,7 @@ def prepare(args, name, origin, policy, managed, port, bootstrap=False):
 
 
 def factory_config(args):
-    root, _ = prepare(args, "factory-defaults", "native", "additive", False, 25899, bootstrap=True)
+    root, _ = prepare(args, "factory-defaults", "native", "additive", False, args.base_port - 1, bootstrap=True)
     command = [str(args.java), "-Xms256m", "-Xmx2G", "-XX:ActiveProcessorCount=2",
                "-jar", FORGE_JAR, "nogui"]
 
@@ -403,6 +403,8 @@ def main():
     for name in ("java", "runtime", "mod", "orespawn", "probe", "output"):
         parser.add_argument("--" + name, required=True, type=Path)
     parser.add_argument("--jobs", type=int, default=2)
+    parser.add_argument("--base-port", type=int, default=25900,
+                        help="First loopback port; choose a separate range for concurrent matrices")
     parser.add_argument("--resource", choices=("iron", "coal"), default="iron")
     parser.add_argument("--only", default="", help="Run matching case names for focused diagnostics")
     parser.add_argument("--local-orespawn-sha256",
@@ -432,7 +434,7 @@ def main():
     cases = [case for case in cases if args.only in f"{case[0]}-{case[1]}-{'on' if case[2] else 'off'}"]
 
     with ThreadPoolExecutor(max_workers=args.jobs) as pool:
-        pending = {pool.submit(scenario, args, *case, 25900 + index): case
+        pending = {pool.submit(scenario, args, *case, args.base_port + index): case
                    for index, case in enumerate(cases)}
 
         for future in as_completed(pending):

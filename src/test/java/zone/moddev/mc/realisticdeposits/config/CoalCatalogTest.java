@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -39,5 +40,19 @@ class CoalCatalogTest {
 				.getAsJsonObject().getAsJsonObject("dimensions").getAsJsonObject("minecraft:overworld");
 		assertEquals(0, rule.getAsJsonArray("host_families").size());
 		rule.getAsJsonArray("host_blocks").forEach(host -> assertTrue(host.getAsJsonObject().has("metadata")));
+	}
+
+	@Test
+	void rejectedHostWeightsCannotLeaveAValidEmptyRule() {
+		for (double weight : new double[] {-0.1D, 1.1D, Double.NaN, Double.POSITIVE_INFINITY}) {
+			zone.moddev.mc.orespawn.api.WorldgenProvider.OreDimensionDefinition.Builder builder =
+					zone.moddev.mc.orespawn.api.WorldgenProvider.OreDimensionDefinition.builder(
+							new net.minecraft.util.ResourceLocation("minecraft:overworld"));
+
+			assertThrows(IllegalArgumentException.class, () -> builder.hostState(
+					new net.minecraft.util.ResourceLocation("minecraft:stone"), 0, weight));
+			assertThrows(IllegalStateException.class, builder::build,
+					"A rejected host must not leave a usable empty rule");
+		}
 	}
 }

@@ -1,9 +1,8 @@
 # Releasing Realistic Deposits
 
-The local coalfield preview is not publishable yet. It uses an unpublished
-OreSpawn API candidate, and the Gradle publication guard rejects that combination.
-Release OreSpawn separately and pin its public file and checksum before preparing
-a Realistic Deposits release with coalfields.
+Coalfields use published OreSpawn 4.1.4.110021, pinned by file and checksum.
+The publication guard still rejects local OreSpawn candidates; a release must
+use the public dependency, not an experimental jar.
 
 The **Release Realistic Deposits** action runs from the repository's default
 branch. Enter the full numeric version, such as `0.2.0.110021`; the final
