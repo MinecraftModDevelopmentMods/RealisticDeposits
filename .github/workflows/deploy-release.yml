@@ -20,7 +20,7 @@ on:
       curseforge_release_level:
         description: CurseForge release level only; this does not change the GitHub Release type.
         required: true
-        default: alpha
+        default: beta
         type: choice
         options:
           - release
@@ -416,7 +416,7 @@ jobs:
             echo "- Target branch: \`$RELEASE_BRANCH\`"
             echo "- Commit: \`$RELEASE_SHA\`"
             echo "- CurseForge release level: \`$RELEASE_LEVEL\`"
-            echo "- GitHub Release type: ordinary release"
+            echo "- GitHub Release type: prerelease"
             echo
             echo "### Public artifact checksums"
             echo '```text'

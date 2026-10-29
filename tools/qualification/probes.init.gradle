@@ -18,5 +18,72 @@ gradle.afterProject { project, state ->
             description = 'Builds the isolated packaged-server policy probe.'
             dependsOn packaged
         }
+
+        def coalInput = project.tasks.register('coalQualificationProbeInput', Jar) {
+            dependsOn project.tasks.named('testClasses')
+            from project.sourceSets.test.output.classesDirs
+            include 'zone/moddev/mc/realisticdeposits/generation/CoalRuntimeProbe*.class'
+            archiveFileName = 'coal-probe-deobf.jar'
+            destinationDirectory = project.layout.buildDirectory.dir('qualification')
+        }
+        def coalPackaged = project.renamer.classes(coalInput) {
+            map.from project.minecraft.dependency.toSrgFile
+            output = project.layout.buildDirectory.file('qualification/coal-probe.jar')
+        }
+        project.tasks.register('prepareCoalQualification') {
+            group = 'verification'
+            description = 'Builds the isolated coalfield server probe.'
+            dependsOn coalPackaged
+        }
+
+        def coalUpgradeInput = project.tasks.register('coalUpgradeProbeInput', Jar) {
+            dependsOn project.tasks.named('testClasses')
+            from project.sourceSets.test.output.classesDirs
+            include 'zone/moddev/mc/realisticdeposits/generation/CoalUpgradeProbe*.class'
+            archiveFileName = 'coal-upgrade-probe-deobf.jar'
+            destinationDirectory = project.layout.buildDirectory.dir('qualification')
+        }
+        def coalUpgradePackaged = project.renamer.classes(coalUpgradeInput) {
+            map.from project.minecraft.dependency.toSrgFile
+            output = project.layout.buildDirectory.file('qualification/coal-upgrade-probe.jar')
+        }
+        project.tasks.register('prepareCoalUpgradeQualification') {
+            group = 'verification'
+            description = 'Builds the old/new coal upgrade fixture without new product API links.'
+            dependsOn coalUpgradePackaged
+        }
+
+        def mineInput = project.tasks.register('mineQualificationProbeInput', Jar) {
+            dependsOn project.tasks.named('testClasses')
+            from project.sourceSets.test.output.classesDirs
+            include 'zone/moddev/mc/realisticdeposits/generation/MineWorkingsRuntimeProbe*.class'
+            archiveFileName = 'mine-probe-deobf.jar'
+            destinationDirectory = project.layout.buildDirectory.dir('qualification')
+        }
+
+        def minePackaged = project.renamer.classes(mineInput) {
+            map.from project.minecraft.dependency.toSrgFile
+            output = project.layout.buildDirectory.file('qualification/mine-probe.jar')
+        }
+
+        def oldTerrainInput = project.tasks.register('legacyMineProbeInput', Jar) {
+            dependsOn project.tasks.named('testClasses')
+            from project.sourceSets.test.output.classesDirs
+            include 'zone/moddev/mc/realisticdeposits/generation/MineLegacyTerrainProbe*.class'
+            archiveFileName = 'legacy-mine-probe-deobf.jar'
+            destinationDirectory = project.layout.buildDirectory.dir('qualification')
+        }
+
+        def oldTerrainPackaged = project.renamer.classes(oldTerrainInput) {
+            map.from project.minecraft.dependency.toSrgFile
+            output = project.layout.buildDirectory.file('qualification/legacy-mine-probe.jar')
+        }
+
+        project.tasks.register('prepareMineQualification') {
+            group = 'verification'
+            description = 'Builds the isolated abandoned-mine server probe.'
+            dependsOn minePackaged
+            dependsOn oldTerrainPackaged
+        }
     }
 }

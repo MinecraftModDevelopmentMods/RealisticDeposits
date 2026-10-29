@@ -6,7 +6,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock
 
-from qualify_110 import checked_orespawn_sha256, check_generation, check_legacy_flags, check_matrix, digest, same_sample
+from qualify_110 import (ORESPAWN_SHA256, checked_orespawn_sha256, check_generation,
+                         check_legacy_flags, check_matrix, digest, same_sample)
 
 
 def sample(ordinary, denied):
@@ -26,6 +27,12 @@ def sample(ordinary, denied):
 
 
 class QualificationChecksTest(unittest.TestCase):
+    def test_default_checksum_matches_the_build_dependency(self):
+        properties = dict(line.split("=", 1) for line in
+                          (Path(__file__).resolve().parents[2] / "gradle.properties").read_text().splitlines()
+                          if "=" in line and not line.startswith("#"))
+        self.assertEqual(properties["orespawn_sha256"], ORESPAWN_SHA256)
+
     def test_local_candidates_require_their_exact_explicit_checksum(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "local-orespawn.jar"

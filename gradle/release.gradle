@@ -8,6 +8,16 @@ def releaseNames = [
         "RealisticDeposits-${version}-javadoc.jar"
 ]
 def preparedDirectory = providers.gradleProperty('preparedReleaseDir')
+
+tasks.register('verifyPublicationAllowed') {
+    group = 'verification'
+    doLast {
+        if (project.oreSpawnCandidateMode) {
+            throw new GradleException('Local OreSpawn candidates cannot be published. Pin a separately released exact-host API first.')
+        }
+    }
+}
+
 def hash = { File input ->
     MessageDigest.getInstance('SHA-256').digest(input.bytes).encodeHex().toString().toUpperCase()
 }
@@ -71,7 +81,7 @@ tasks.register('verifyJavadocOrdering') {
 tasks.register('verifyReleaseConfiguration') {
     group = 'verification'
     doLast {
-        if (project.mod_version != '0.1.1.110021'
+        if (project.mod_version != '0.2.0.110021'
                 || project.curseforge_project_id != '1689703'
                 || project.mod_artifact != 'RealisticDeposits'
                 || project.java_version != '8' || project.gradle_java_version != '17'
@@ -144,6 +154,7 @@ tasks.register('writeReleaseChecksums') {
 // It must not quietly rebuild a different jar on the upload runner.
 tasks.register('verifyPreparedReleaseArtifacts') {
     group = 'verification'
+    dependsOn tasks.named('verifyPublicationAllowed')
     doLast {
         if (!preparedDirectory.isPresent()) {
             throw new GradleException('preparedReleaseDir is required for publication')
@@ -232,6 +243,7 @@ tasks.register('verifyMavenCoordinates') {
 }
 
 tasks.withType(PublishToMavenRepository).configureEach {
+    dependsOn tasks.named('verifyPublicationAllowed')
     dependsOn tasks.named('verifyPreparedReleaseArtifacts')
     dependsOn tasks.named('verifyMavenCoordinates')
     doFirst {

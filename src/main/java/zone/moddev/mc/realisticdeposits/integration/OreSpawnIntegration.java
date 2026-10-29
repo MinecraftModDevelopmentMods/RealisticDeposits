@@ -13,6 +13,8 @@ import net.minecraft.util.ResourceLocation;
 public final class OreSpawnIntegration {
 	public static final ResourceLocation PATTERN_ID =
 			new ResourceLocation("realisticdeposits", "stratiform_seam");
+	public static final ResourceLocation COAL_PATTERN_ID =
+			new ResourceLocation("realisticdeposits", "coal_measures");
 
 	private OreSpawnIntegration() { }
 
@@ -36,17 +38,27 @@ public final class OreSpawnIntegration {
 		patternSettings.add("definition", definition.toJson());
 		provider.ore(oreId, output, ore -> {
 			ore.retrogen(false).suppressVanilla(false);
+			if (definition.isCoal()) ore.enabled(definition.enabled());
 			for (String dimensionId : definition.dimensions()) {
 				ore.dimension(new ResourceLocation(dimensionId), dimension -> {
 					// Keep the enclosing OreSpawn attempt broad: live geometry reload may
 					// change the deposit's own height envelope without mutating a saved profile.
 					dimension.yRange(0, 255)
 							.attempts(1.0D).quantity(1).spread(0, 0).nodeSize(1)
-							.pattern(PATTERN_ID, patternSettings);
-					for (String host : definition.hosts()) dimension.hostBlock(new ResourceLocation(host));
+							.pattern(definition.isCoal() ? COAL_PATTERN_ID : PATTERN_ID, patternSettings);
+					for (String host : definition.hosts()) {
+						if (definition.isCoal()) {
+							ResourceLocation id = new ResourceLocation(host);
+							if (net.minecraft.block.Block.REGISTRY.containsKey(id)) dimension.hostState(id, 0);
+						} else {
+							dimension.hostBlock(new ResourceLocation(host));
+						}
+					}
 					// Every geology family is a safe outer host. ROCK_ALIGNED applies the
 					// current live family selection per output block inside the pattern.
-					for (GeologyFamily family : GeologyFamily.values()) dimension.hostFamily(family);
+					if (!definition.isCoal()) {
+						for (GeologyFamily family : GeologyFamily.values()) dimension.hostFamily(family);
+					}
 					for (String biome : definition.biomeIds()) dimension.biome(new ResourceLocation(biome));
 					for (String biome : definition.excludedBiomeIds()) {
 						dimension.excludeBiome(new ResourceLocation(biome));

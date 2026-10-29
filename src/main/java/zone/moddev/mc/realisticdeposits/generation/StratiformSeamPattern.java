@@ -87,6 +87,7 @@ public final class StratiformSeamPattern {
 				StratiformSeamBody body = planned.get();
 				if (!body.bounds().intersectsChunk(context.chunkX(), context.chunkZ())
 						|| !acceptsCenter(definition, body, sampler)) continue;
+				MineWorkingsGenerator.offer(context, definition, body);
 				BlockBounds bounds = body.bounds();
 				for (int x = Math.max(chunkMinX, bounds.minimumX());
 						x <= Math.min(chunkMaxX, bounds.maximumX()); x++) {

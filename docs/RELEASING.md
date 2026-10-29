@@ -1,7 +1,11 @@
 # Releasing Realistic Deposits
 
+Coalfields use published OreSpawn 4.1.4.110021, pinned by file and checksum.
+The publication guard still rejects local OreSpawn candidates; a release must
+use the public dependency, not an experimental jar.
+
 The **Release Realistic Deposits** action runs from the repository's default
-branch. Enter the full numeric version, such as `0.1.1.110021`; the final
+branch. Enter the full numeric version, such as `0.2.0.110021`; the final
 component identifies the Minecraft version and loader. CurseForge's alpha,
 beta or release label is separate from the numeric version.
 
@@ -9,7 +13,7 @@ First run with **mode: validate**. This checks the branch, version, Java
 settings and successful CI, then builds and checksums a release bundle. It
 does not create a tag or upload anything.
 
-To publish, select **mode: publish**, choose **alpha**, and tick the explicit
+To publish, select **mode: publish**, choose **beta**, and tick the explicit
 publication confirmation. The workflow requires all four secrets:
 
 - `CURSEFORGE_TOKEN`
@@ -20,6 +24,10 @@ publication confirmation. The workflow requires all four secrets:
 The upload order is Maven, CurseForge, then GitHub. Each job downloads the
 same immutable bundle and checks its hashes. OreSpawn is a required
 CurseForge dependency. The current project ID is `1689703`.
+
+Beta is the default CurseForge channel for this update. The numeric version
+stays unchanged, and the GitHub release remains a prerelease. Validation mode
+is still the safe default; changing the channel does not authorize an upload.
 
 Do not upload a second file because the first is awaiting moderation. If a
 job fails after an upload, check its receipt and public destination before

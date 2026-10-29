@@ -7,7 +7,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
 /** Bounded shape and grade settings for a folded, laterally extensive seam. */
-public final class StratiformSeamSettings {
+public final class StratiformSeamSettings implements DepositShapeSettings {
 	private final IntRange strikeLength;
 	private final IntRange downDipWidth;
 	private final double minimumThickness;
@@ -54,6 +54,7 @@ public final class StratiformSeamSettings {
 	}
 
 	public IntRange strikeLength() { return strikeLength; }
+	@Override public String type() { return "stratiform_seam"; }
 	public IntRange downDipWidth() { return downDipWidth; }
 	public double minimumThickness() { return minimumThickness; }
 	public double maximumThickness() { return maximumThickness; }

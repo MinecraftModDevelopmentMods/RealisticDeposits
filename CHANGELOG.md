@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.2.0.110021
+
+Beta for Minecraft 1.10.2.
+
+- Add large coalfields with two to four thin beds, shared folds and faults,
+  gradual thinning and local rock partings. Keep 15% background coal for early
+  play and retain vanilla coal drops and Fortune behaviour.
+- Fit coal beds to suitable existing sedimentary rocks when Mineralogy geology
+  is active. Use plain stone otherwise, without adding rocks or enabling
+  terrain replacement. Keep granite, diorite, andesite and unsuitable hosts out.
+- Keep the coal catalogue separate from iron. Preserve existing settings,
+  world profiles, legacy coal layers and previously generated terrain.
+- Require OreSpawn 4.1.4.110021 so coal replaces only the intended rock variants.
+  Download and check the release automatically.
+
+- Add optional abandoned workings to deposits: a surface shaft, ladder access,
+  short seam-following galleries, timber supports, broken rails, cobwebs and
+  small rubble piles. Mines are off by default, with a separate chance for each
+  deposit definition.
+- Keep mine layouts stable through reloads and later exploration. Protect old
+  chunks, and finish only the unbuilt sections of an already accepted plan.
+- Skip unsafe sites and leave obstructions sealed rather than cutting into
+  liquids or another structure. Mines do not reroll deposit selection or
+  produce item drops while carving.
+- Add a separate Eclipse mine-testing profile without changing ordinary saves
+  or configuration.
+
 ## 0.1.1.110021
 
 - Let pack authors define deposits in JSON, starting with a supplied iron

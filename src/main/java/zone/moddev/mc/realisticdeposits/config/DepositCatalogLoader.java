@@ -16,7 +16,10 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import zone.moddev.mc.realisticdeposits.model.AlignmentMode;
+import zone.moddev.mc.realisticdeposits.model.AbandonedMineSettings;
 import zone.moddev.mc.realisticdeposits.model.DepositDefinition;
+import zone.moddev.mc.realisticdeposits.model.DepositShapeSettings;
+import zone.moddev.mc.realisticdeposits.model.CoalMeasuresSettings;
 import zone.moddev.mc.realisticdeposits.model.IntRange;
 import zone.moddev.mc.realisticdeposits.model.InteractionPolicy;
 import zone.moddev.mc.realisticdeposits.model.StratiformSeamSettings;
@@ -29,7 +32,8 @@ public final class DepositCatalogLoader {
 			"interaction", "dimensions", "hosts", "min_y", "max_y", "region_spacing_chunks",
 			"selection_chance", "salt", "shape", "geomes", "rock_families", "biome_ids",
 			"excluded_biome_ids", "biome_dictionary", "excluded_biome_dictionary",
-			"background_generation_scale");
+			"background_generation_scale", "abandoned_mine");
+	private static final Set<String> MINE_KEYS = keys("enabled", "chance");
 	private static final Set<String> SHAPE_KEYS = keys("type", "strike_length", "down_dip_width",
 			"thickness", "dip_degrees", "bend_amplitude", "bend_wavelength",
 			"fold_amplitude", "fold_wavelength", "density", "edge_falloff");
@@ -76,23 +80,16 @@ public final class DepositCatalogLoader {
 	private static DepositDefinition definition(JsonObject json, String path, List<String> warnings) {
 		unknownKeys(json, DEPOSIT_KEYS, path, warnings);
 		JsonObject shape = object(json, "shape", path);
-		unknownKeys(shape, SHAPE_KEYS, path + " shape", warnings);
-		String shapeType = string(shape, "type", path + " shape");
-		if (!"stratiform_seam".equals(shapeType)) {
-			throw invalid(path, "unsupported shape type " + shapeType);
+		DepositShapeSettings settings = shape(shape, path, warnings);
+		AbandonedMineSettings mine = AbandonedMineSettings.DISABLED;
+		if (json.has("abandoned_mine")) {
+			JsonObject mineJson = object(json, "abandoned_mine", path);
+			unknownKeys(mineJson, MINE_KEYS, path + " abandoned_mine", warnings);
+			mine = new AbandonedMineSettings(bool(mineJson, "enabled", false, path),
+					mineJson.has("chance") ? number(mineJson, "chance", path)
+							: AbandonedMineSettings.DEFAULT_CHANCE);
 		}
-		double[] thickness = doubleRange(shape, "thickness", path);
-		double[] dipDegrees = doubleRange(shape, "dip_degrees", path);
-		StratiformSeamSettings settings = new StratiformSeamSettings(
-				integerRange(shape, "strike_length", path),
-				integerRange(shape, "down_dip_width", path),
-				thickness[0], thickness[1], dipDegrees[0], dipDegrees[1],
-				number(shape, "bend_amplitude", path),
-				number(shape, "bend_wavelength", path),
-				number(shape, "fold_amplitude", path),
-				number(shape, "fold_wavelength", path),
-				number(shape, "density", path),
-				number(shape, "edge_falloff", path));
+
 		return new DepositDefinition(
 				string(json, "id", path), bool(json, "enabled", true, path),
 				string(json, "resource", path),
@@ -107,7 +104,31 @@ public final class DepositCatalogLoader {
 				optionalNumber(json, "background_generation_scale", path),
 				integer(json, "min_y", path), integer(json, "max_y", path),
 				integer(json, "region_spacing_chunks", path),
-				number(json, "selection_chance", path), longNumber(json, "salt", path), settings);
+				number(json, "selection_chance", path), longNumber(json, "salt", path), settings, mine);
+	}
+
+	private static DepositShapeSettings shape(JsonObject shape, String path, List<String> warnings) {
+		String type = string(shape, "type", path + " shape");
+		if ("coal_measures".equals(type)) {
+			unknownKeys(shape, keys("type", "strike_length", "down_dip_width", "beds", "thickness",
+					"rock_interval", "maximum_dip_degrees", "fold_amplitude", "maximum_fault_throw"),
+					path + " shape", warnings);
+			return new CoalMeasuresSettings(integerRange(shape, "strike_length", path),
+					integerRange(shape, "down_dip_width", path), integerRange(shape, "beds", path),
+					integerRange(shape, "thickness", path), integerRange(shape, "rock_interval", path),
+					number(shape, "maximum_dip_degrees", path), number(shape, "fold_amplitude", path),
+					integer(shape, "maximum_fault_throw", path));
+		}
+
+		if (!"stratiform_seam".equals(type)) throw invalid(path, "unsupported shape type " + type);
+		unknownKeys(shape, SHAPE_KEYS, path + " shape", warnings);
+		double[] thickness = doubleRange(shape, "thickness", path);
+		double[] dip = doubleRange(shape, "dip_degrees", path);
+		return new StratiformSeamSettings(integerRange(shape, "strike_length", path),
+				integerRange(shape, "down_dip_width", path), thickness[0], thickness[1], dip[0], dip[1],
+				number(shape, "bend_amplitude", path), number(shape, "bend_wavelength", path),
+				number(shape, "fold_amplitude", path), number(shape, "fold_wavelength", path),
+				number(shape, "density", path), number(shape, "edge_falloff", path));
 	}
 
 	private static void unknownKeys(JsonObject json, Set<String> allowed, String path,

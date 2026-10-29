@@ -20,6 +20,10 @@
       "region_spacing_chunks": 64,
       "selection_chance": 0.25,
       "salt": 7146057694168187204,
+      "abandoned_mine": {
+        "enabled": false,
+        "chance": 0.15
+      },
       "shape": {
         "type": "stratiform_seam",
         "strike_length": [640, 960],

@@ -36,6 +36,8 @@ import zone.moddev.mc.realisticdeposits.config.RealisticDepositsRuntime;
 import zone.moddev.mc.realisticdeposits.geometry.BlockBounds;
 import zone.moddev.mc.realisticdeposits.geometry.RegionDepositPlanner;
 import zone.moddev.mc.realisticdeposits.geometry.StratiformSeamBody;
+import zone.moddev.mc.realisticdeposits.geometry.CoalMeasuresBody;
+import zone.moddev.mc.realisticdeposits.geometry.MineableDepositBody;
 import zone.moddev.mc.realisticdeposits.model.DepositDefinition;
 
 /** Packaged-server qualification fixture, excluded from the public mod jars. */
@@ -57,7 +59,7 @@ public final class PolicyQualificationProbe {
 
     @SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
     public void observeIron(OreGenEvent.GenerateMinable event) {
-        if (event.getType() != OreGenEvent.GenerateMinable.EventType.IRON) {
+        if (event.getType() != (coal() ? OreGenEvent.GenerateMinable.EventType.COAL : OreGenEvent.GenerateMinable.EventType.IRON)) {
             return;
         }
 
@@ -177,19 +179,19 @@ public final class PolicyQualificationProbe {
                             update(terrain, Block.getStateId(state));
 
                             if (y >= definition.minimumY() && y <= definition.maximumY()
-                                    && planned.contains(positionKey(x, y, z)) && state.getBlock() != Blocks.IRON_ORE) {
-                                if (state.getBlock() == Blocks.STONE) {
+                                    && planned.contains(positionKey(x, y, z)) && state.getBlock() != resource()) {
+                                if (state.getBlock() == Blocks.STONE && (!coal() || state.equals(Blocks.STONE.getDefaultState()))) {
                                     missedStone++;
                                 } else {
                                     blocked.merge(state.getBlock().getRegistryName().toString(), 1, Integer::sum);
                                 }
                             }
 
-                            if (state.getBlock() != Blocks.IRON_ORE) {
+                            if (state.getBlock() != resource()) {
                                 continue;
                             }
 
-                            if (y >= 96) {
+                            if (y >= definition.minimumY()) {
                                 if (!planned.contains(positionKey(x, y, z))) {
                                     unexpectedIron++;
                                 }
@@ -235,15 +237,17 @@ public final class PolicyQualificationProbe {
         int min = base * 16;
         int max = (base + SAMPLE_SIDE) * 16 - 1;
         int spacing = definition.regionSpacingChunks() * 16;
-        int radius = (int) Math.ceil(definition.seam().strikeLength().maximum() * 0.5
-                + definition.seam().downDipWidth().maximum() * 0.5
-                + definition.seam().bendAmplitude() + 13.0);
+        int radius = definition.isCoal()
+                ? (definition.coal().strikeLength().maximum() + definition.coal().downDipWidth().maximum()) / 2 + 3
+                : (int) Math.ceil(definition.seam().strikeLength().maximum() * 0.5
+                        + definition.seam().downDipWidth().maximum() * 0.5 + definition.seam().bendAmplitude() + 13.0);
         Set<Long> positions = new HashSet<>();
 
         for (int rx = Math.floorDiv(min - radius, spacing); rx <= Math.floorDiv(max + radius, spacing); rx++) {
             for (int rz = Math.floorDiv(min - radius, spacing); rz <= Math.floorDiv(max + radius, spacing); rz++) {
-                StratiformSeamBody body = RegionDepositPlanner.plan(definition, worldSeed,
-                        "minecraft:overworld", rx, rz).orElse(null);
+                MineableDepositBody body = definition.isCoal()
+                        ? CoalMeasuresBody.plan(definition, worldSeed, "minecraft:overworld", rx, rz).orElse(null)
+                        : RegionDepositPlanner.plan(definition, worldSeed, "minecraft:overworld", rx, rz).orElse(null);
 
                 if (body == null) {
                     continue;
@@ -265,6 +269,10 @@ public final class PolicyQualificationProbe {
 
         return positions;
     }
+
+    private static boolean coal() { return "coal".equals(System.getProperty("rd.qualification.resource")); }
+
+    private static Block resource() { return coal() ? Blocks.COAL_ORE : Blocks.IRON_ORE; }
 
     private static long positionKey(int x, int y, int z) {
         return ((long) (x & 0x3ffffff) << 38) | ((long) (z & 0x3ffffff) << 12) | (y & 0xfff);

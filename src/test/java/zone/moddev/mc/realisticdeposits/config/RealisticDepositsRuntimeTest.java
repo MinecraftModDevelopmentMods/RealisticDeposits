@@ -3,6 +3,7 @@ package zone.moddev.mc.realisticdeposits.config;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -54,6 +55,42 @@ class RealisticDepositsRuntimeTest {
 				+ "\"deposits\":[" + first + "," + second + "]}");
 		assertThrows(IllegalArgumentException.class,
 				() -> RealisticDepositsRuntime.initializeForTests(config.toFile()));
+	}
+
+	@Test
+	void anUnusedDisabledRuleDoesNotConflictWithTheActivePolicy() throws IOException {
+		Path config = temporary.resolve("disabled-policy");
+		Path catalog = config.resolve("realisticdeposits/deposits/vanilla.json");
+		Files.createDirectories(catalog.getParent());
+		String active = definition("realisticdeposits:active", "minecraft:iron_ore", "replacement", 1);
+		String disabled = definition("realisticdeposits:disabled", "minecraft:iron_ore", "hybrid", 1)
+				.replace("\"enabled\":true", "\"enabled\":false");
+		write(catalog, "{\"schema_version\":1,\"catalog\":\"realisticdeposits:test\",\"deposits\":["
+				+ active + "," + disabled + "]}");
+		RealisticDepositsRuntime.initializeForTests(config.toFile());
+		assertEquals(RuntimeState.IntegrationStatus.ACTIVE, RealisticDepositsRuntime.state().integrationStatus());
+	}
+
+	@Test
+	void installingCoalLeavesBothEditedCataloguesByteForByteAlone() throws IOException {
+		Path config = temporary.resolve("edited-catalogues");
+		Path deposits = config.resolve("realisticdeposits/deposits");
+		Files.createDirectories(deposits);
+		byte[] iron = document("minecraft:iron_ore", "additive", 0.37D).getBytes(StandardCharsets.UTF_8);
+		byte[] coal;
+		try (java.io.InputStream source = getClass().getResourceAsStream(
+				"/assets/realisticdeposits/defaults/coal.json")) {
+			coal = new String(com.google.common.io.ByteStreams.toByteArray(source), StandardCharsets.UTF_8)
+					.replace("0.15", "0.37").getBytes(StandardCharsets.UTF_8);
+		}
+		Files.write(deposits.resolve("vanilla.json"), iron);
+		Files.write(deposits.resolve("coal.json"), coal);
+
+		RealisticDepositsRuntime.initializeForTests(config.toFile());
+		RealisticDepositsRuntime.reloadForTests();
+
+		assertArrayEquals(iron, Files.readAllBytes(deposits.resolve("vanilla.json")));
+		assertArrayEquals(coal, Files.readAllBytes(deposits.resolve("coal.json")));
 	}
 
 	private static void write(Path path, String value) throws IOException {

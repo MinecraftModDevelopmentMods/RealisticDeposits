@@ -8,6 +8,8 @@ import zone.moddev.mc.realisticdeposits.config.RuntimeState;
 import zone.moddev.mc.realisticdeposits.geometry.BlockBounds;
 import zone.moddev.mc.realisticdeposits.geometry.RegionDepositPlanner;
 import zone.moddev.mc.realisticdeposits.geometry.StratiformSeamBody;
+import zone.moddev.mc.realisticdeposits.geometry.MineableDepositBody;
+import zone.moddev.mc.realisticdeposits.geometry.CoalMeasuresBody;
 import zone.moddev.mc.realisticdeposits.model.DepositDefinition;
 
 import net.minecraft.command.CommandBase;
@@ -67,18 +69,19 @@ public final class RealisticDepositsCommand extends CommandBase {
 		DepositDefinition definition = selectDefinition(state, args.length == 4 ? args[3] : null);
 		World world = sender.getEntityWorld();
 		String dimension = dimensionId(world.provider.getDimension());
-		Optional<StratiformSeamBody> planned = RegionDepositPlanner.plan(definition,
-				world.getSeed(), dimension, regionX, regionZ);
+		Optional<? extends MineableDepositBody> planned = definition.isCoal()
+				? CoalMeasuresBody.plan(definition, world.getSeed(), dimension, regionX, regionZ)
+				: RegionDepositPlanner.plan(definition, world.getSeed(), dimension, regionX, regionZ);
 		if (!planned.isPresent()) {
 			sender.sendMessage(new TextComponentString("No " + definition.id()
 					+ " candidate is selected in region " + regionX + "," + regionZ + "."));
 			return;
 		}
-		StratiformSeamBody body = planned.get();
+		MineableDepositBody body = planned.get();
 		BlockBounds bounds = body.bounds();
 		sender.sendMessage(new TextComponentString("Planned " + definition.id() + " at "
 				+ body.centerX() + "," + body.centerY() + "," + body.centerZ()
-				+ "; strike=" + body.strikeLength() + ", down-dip=" + body.downDipWidth()
+				+ "; shape=" + definition.shape().type() + ", strike=" + body.strikeLength()
 				+ "; bounds=" + bounds.minimumX() + "," + bounds.minimumY() + ","
 				+ bounds.minimumZ() + " to " + bounds.maximumX() + "," + bounds.maximumY()
 				+ "," + bounds.maximumZ() + ". Preview does not change blocks."));
