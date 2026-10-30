@@ -19,6 +19,27 @@ import zone.moddev.mc.realisticdeposits.geometry.MinePoint;
 class MineWorldDataTest {
 
 	@Test
+	void theOldPaletteAndSavedVerticalLayoutsStayCompatible() {
+		assertEquals(MineBlock.LADDER_WEST, MineBlock.fromSavedId(6));
+		assertEquals(MineBlock.COBBLESTONE, MineBlock.fromSavedId(7));
+		Map<Long, MineBlock> cells = new LinkedHashMap<>();
+		for (int y = 20; y <= 80; y++) {
+			cells.put(new MinePoint(0, y, 0).packed(), MineBlock.AIR);
+			cells.put(new MinePoint(1, y, 0).packed(), MineBlock.LADDER_WEST);
+			cells.put(new MinePoint(2, y, 0).packed(), MineBlock.PLANKS);
+		}
+
+		MineWorldData original = new MineWorldData("test");
+		original.accept("old-shaft", new AbandonedMinePlan(123,
+				new MinePoint(0, 80, 0), new MinePoint(0, 20, 0), cells));
+		NBTTagCompound saved = original.writeToNBT(new NBTTagCompound());
+		MineWorldData loaded = new MineWorldData("test");
+		loaded.readFromNBT(saved);
+		assertEquals(cells, loaded.plan("old-shaft").blocks());
+		assertEquals(saved, loaded.writeToNBT(new NBTTagCompound()));
+	}
+
+	@Test
 	void laterChunksUseTheExactSavedCellsAndPalette() {
 		MineWorldData original = new MineWorldData("test");
 		Map<Long, MineBlock> blocks = new LinkedHashMap<>();

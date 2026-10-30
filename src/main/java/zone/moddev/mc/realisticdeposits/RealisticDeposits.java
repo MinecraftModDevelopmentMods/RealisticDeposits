@@ -5,6 +5,8 @@ import zone.moddev.mc.realisticdeposits.config.RealisticDepositsRuntime;
 import zone.moddev.mc.realisticdeposits.generation.StratiformSeamPattern;
 import zone.moddev.mc.realisticdeposits.generation.CoalMeasuresPattern;
 import zone.moddev.mc.realisticdeposits.generation.MineWorkingsGenerator;
+import zone.moddev.mc.realisticdeposits.generation.DiamondPattern;
+import zone.moddev.mc.realisticdeposits.content.ModContent;
 import zone.moddev.mc.realisticdeposits.integration.OreSpawnIntegration;
 import zone.moddev.mc.realisticdeposits.proxy.CommonProxy;
 
@@ -35,11 +37,15 @@ import net.minecraftforge.fml.common.registry.GameRegistry;
 public final class RealisticDeposits {
 	public static final String MOD_ID = "realisticdeposits";
 	public static final String NAME = "Realistic Deposits";
-	public static final String VERSION = "0.2.0.110021";
+	public static final String VERSION = "0.3.0.110021";
 	private static final OrePatternType STRATIFORM_SEAM = StratiformSeamPattern.type()
 			.setRegistryName(OreSpawnIntegration.PATTERN_ID);
 	private static final OrePatternType COAL_MEASURES = CoalMeasuresPattern.type()
 			.setRegistryName(OreSpawnIntegration.COAL_PATTERN_ID);
+	private static final OrePatternType DIAMOND_PIPE = DiamondPattern.type(false)
+			.setRegistryName(OreSpawnIntegration.DIAMOND_PIPE_ID);
+	private static final OrePatternType DIAMOND_PLACER = DiamondPattern.type(true)
+			.setRegistryName(OreSpawnIntegration.DIAMOND_PLACER_ID);
 
 	@SidedProxy(clientSide = "zone.moddev.mc.realisticdeposits.proxy.ClientProxy",
 			serverSide = "zone.moddev.mc.realisticdeposits.proxy.CommonProxy")
@@ -54,10 +60,14 @@ public final class RealisticDeposits {
 	public void registerPatterns(RegistryEvent.Register<OrePatternType> event) {
 		event.getRegistry().register(STRATIFORM_SEAM);
 		event.getRegistry().register(COAL_MEASURES);
+		event.getRegistry().register(DIAMOND_PIPE);
+		event.getRegistry().register(DIAMOND_PLACER);
 	}
 
 	@Mod.EventHandler
 	public void preInitialize(FMLPreInitializationEvent event) {
+		ModContent.register();
+		proxy.registerClientModels();
 		RealisticDepositsRuntime.initialize(event.getModConfigurationDirectory());
 		GameRegistry.registerWorldGenerator(MineWorkingsGenerator.INSTANCE, Integer.MAX_VALUE);
 	}
@@ -73,6 +83,7 @@ public final class RealisticDeposits {
 	@Mod.EventHandler
 	public void serverAboutToStart(FMLServerAboutToStartEvent event) {
 		CoalMeasuresPattern.newServerSession();
+		DiamondPattern.newServerSession();
 	}
 
 	@Mod.EventHandler

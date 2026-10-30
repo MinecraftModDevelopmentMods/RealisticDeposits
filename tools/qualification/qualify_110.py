@@ -77,7 +77,7 @@ def prepare(args, name, origin, policy, managed, port, bootstrap=False):
 
     settings = (
         "level-name=world\nlevel-seed=3346071746553592696\nlevel-type=FLAT\n"
-        f"generator-settings=3;minecraft:bedrock,{239 if RESOURCE_KEY == 'coal_ore' else 127}*minecraft:stone,minecraft:grass;1;decoration\n"
+        f"generator-settings=3;minecraft:bedrock,{239 if RESOURCE_KEY in ('coal_ore', 'diamond_ore') else 127}*minecraft:stone,minecraft:grass;1;decoration\n"
         f"server-ip=127.0.0.1\nserver-port={port}\nonline-mode=false\n"
         "generate-structures=false\nview-distance=3\nmax-tick-time=-1\nallow-nether=false\n"
         "spawn-animals=false\nspawn-monsters=false\n"
@@ -103,6 +103,14 @@ def prepare(args, name, origin, policy, managed, port, bootstrap=False):
             "beds": [2, 2], "thickness": [1, 1], "rock_interval": [2, 2],
             "maximum_dip_degrees": 0, "fold_amplitude": 0, "maximum_fault_throw": 0,
         }
+    elif RESOURCE_KEY == "diamond_ore":
+        # Separate pipe diamonds from the native/imported low-level supply.
+        definition.update(min_y=180, max_y=210)
+        definition["shape"] = {
+            "type": "diamond_pipe", "pipes": [1, 2], "upper_diameter": [48, 64],
+            "root_y": [4, 12], "surface_cover": [4, 12], "district_radius": 64,
+            "ore_density": 0.05, "legacy_selection_scale": 0.25,
+        }
     definition["interaction"] = "hybrid" if policy.startswith("hybrid") else policy
 
     if policy == "hybrid-15":
@@ -113,6 +121,11 @@ def prepare(args, name, origin, policy, managed, port, bootstrap=False):
                       .read_text(encoding="utf-8"))
     coal["deposits"][0]["enabled"] = False
     write_json(root / "config/realisticdeposits/deposits/coal.json", coal)
+    diamonds = json.loads((Path(__file__).parents[2] / "src/main/resources/assets/realisticdeposits/defaults/diamonds.json")
+                          .read_text(encoding="utf-8"))
+    for default in diamonds["deposits"]:
+        default["enabled"] = False
+    write_json(root / "config/realisticdeposits/deposits/diamonds.json", diamonds)
     sources = {}
 
     if origin != "native":
@@ -230,6 +243,10 @@ def check_profile(report, origin, policy, managed):
     default_coal = owned.pop("realisticdeposits:deposit/realisticdeposits/overworld_coal_measures", None)
     if default_coal is not None:
         assert default_coal["enabled"] is False, "The unrelated default coalfield must remain disabled"
+    for name in ("overworld_diamond_pipes", "overworld_diamond_placers"):
+        default = owned.pop("realisticdeposits:deposit/realisticdeposits/" + name, None)
+        if default is not None:
+            assert default["enabled"] is False, "An unrelated default diamond rule became active"
     assert set(owned) == {DEPOSIT_ID}, "Duplicate or missing Realistic Deposits rule"
     rule = owned[DEPOSIT_ID]
     assert rule["retrogen"] is False
@@ -405,7 +422,7 @@ def main():
     parser.add_argument("--jobs", type=int, default=2)
     parser.add_argument("--base-port", type=int, default=25900,
                         help="First loopback port; choose a separate range for concurrent matrices")
-    parser.add_argument("--resource", choices=("iron", "coal"), default="iron")
+    parser.add_argument("--resource", choices=("iron", "coal", "diamond"), default="iron")
     parser.add_argument("--only", default="", help="Run matching case names for focused diagnostics")
     parser.add_argument("--local-orespawn-sha256",
                         help="Explicit checksum for testing an unpublished local OreSpawn fix")
@@ -420,6 +437,13 @@ def main():
         raise AssertionError("Keep previous evidence and choose a new output directory")
 
     args.output.mkdir(parents=True)
+    inputs = args.output / "inputs"
+    inputs.mkdir()
+    for name in ("mod", "orespawn", "probe"):
+        source = getattr(args, name)
+        target = inputs / source.name
+        shutil.copy2(source, target)
+        setattr(args, name, target)
     write_json(args.output / "artifacts.json", {
         "orespawn_kind": "local" if args.local_orespawn_sha256 else "published",
         "orespawn_sha256": orespawn_sha256,

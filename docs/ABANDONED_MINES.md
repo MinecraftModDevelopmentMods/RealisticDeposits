@@ -1,39 +1,49 @@
 # Abandoned mines
 
-Some deposits can have old workings: a timber-framed surface shaft, a ladder
-down to the seam, a short main gallery and a couple of side passages. Broken
+Underground deposits can have old workings: a timber-framed entrance, a winding
+stepped tunnel, a short main gallery and a couple of side passages. Broken
 rails, cobwebs and small piles of fallen rock give them an abandoned look.
 Most of the ore is left for you to mine. These workings contain no loot or
 spawners, and they do not replace Minecraft's own mineshafts.
 
-The feature is experimental and **off by default**. Older configuration files
-remain off without needing any changes.
+Fresh catalogues enable workings for iron formations, coalfields and diamond
+pipes, with an attempt at every deposit where safe. Short stair runs and level
+turning landings make the descent walkable in both directions, without a long
+open drop. Guardrails protect the exposed approach. Iron and coal galleries
+follow a seam; diamond workings make short crosscuts through one pipe. River
+placers have no shafts or surface diggings.
 
-## Enable it
+Existing catalogues and world settings are not overwritten. An older world
+with workings disabled keeps that choice.
 
-Before creating a world, add this section to a deposit in
-`config/realisticdeposits/deposits/vanilla.json`:
+## Settings
+
+Before creating a world, check the deposit's `abandoned_mine` section in
+`config/realisticdeposits/deposits/vanilla.json`, `coal.json` or `diamonds.json`.
+The new defaults are:
 
 ```json
 "abandoned_mine": {
   "enabled": true,
-  "chance": 0.15
+  "chance": 1.0
 }
 ```
 
 `chance` is the chance of attempting workings for each selected deposit, not
 for each chunk. `0.15` means 15%; `0` disables attempts and `1` attempts every
-deposit. Different deposit definitions can use different values.
+deposit. Set `enabled` to `false` to turn workings off. Different deposit
+definitions can use different values. Older definitions without this section
+remain off.
 
-Not every attempt finds a suitable site. This first version looks for dry,
+Not every attempt finds a suitable site. The planner looks for dry,
 reasonably level, open ground in the Overworld. It skips wooded entrances,
-oceans, rivers, exposed galleries, excessive shaft depths and known structure
+oceans, rivers, exposed galleries, excessive depths and known structure
 collisions. It currently supports the normal and superflat terrain generators;
 unrecognised terrain generators are left alone.
 
 The seed and deposit settings choose the layout. Site safety still takes
 priority: if custom deposits overlap, an already accepted mine keeps its space.
-This first version does not join neighbouring mines into a larger complex.
+It does not join neighbouring mines into a larger complex.
 
 ## Saved worlds
 
@@ -47,6 +57,9 @@ chunks are never excavated again. Chunks saved before the feature was enabled
 are protected, even if they had not yet been populated. A raw chunk first
 created for a new mine can finish its initial population later, but only while
 the saved plan still records that section as unbuilt.
+
+Older ladder shafts are not rebuilt when you update. Their saved sections keep
+the original layout; the stepped entrances apply only to newly planned mines.
 
 If later generation places liquid or another structure in a planned section,
 the mine leaves that section sealed rather than cutting into it. The server

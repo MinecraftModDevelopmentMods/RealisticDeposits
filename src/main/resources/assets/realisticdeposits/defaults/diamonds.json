@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "catalog": "realisticdeposits:diamonds",
+  "deposits": [
+    {
+      "id": "realisticdeposits:overworld_diamond_pipes",
+      "enabled": true,
+      "resource": "minecraft:diamond_ore",
+      "alignment": "geome_aligned",
+      "interaction": "hybrid",
+      "background_generation_scale": 0.15,
+      "dimensions": ["minecraft:overworld"],
+      "hosts": ["minecraft:stone"],
+      "geomes": ["orespawn:stable_craton"],
+      "min_y": 4,
+      "max_y": 128,
+      "region_spacing_chunks": 32,
+      "selection_chance": 0.5,
+      "salt": 7146057694168187206,
+      "abandoned_mine": {"enabled": true, "chance": 1.0},
+      "shape": {
+        "type": "diamond_pipe",
+        "pipes": [1, 3],
+        "upper_diameter": [48, 96],
+        "root_y": [4, 12],
+        "surface_cover": [4, 12],
+        "district_radius": 192,
+        "ore_density": 0.28,
+        "legacy_selection_scale": 0.25
+      }
+    },
+    {
+      "id": "realisticdeposits:overworld_diamond_placers",
+      "enabled": true,
+      "resource": "realisticdeposits:diamond_gravel",
+      "alignment": "massive_rare",
+      "interaction": "additive",
+      "dimensions": ["minecraft:overworld"],
+      "hosts": ["minecraft:gravel", "minecraft:sand"],
+      "min_y": 8,
+      "max_y": 128,
+      "region_spacing_chunks": 32,
+      "selection_chance": 1.0,
+      "salt": 7146057694168187207,
+      "shape": {
+        "type": "diamond_placer",
+        "source_deposit": "realisticdeposits:overworld_diamond_pipes",
+        "maximum_source_distance": 1024,
+        "thickness": [1, 3],
+        "coverage": 0.35
+      }
+    }
+  ]
+}

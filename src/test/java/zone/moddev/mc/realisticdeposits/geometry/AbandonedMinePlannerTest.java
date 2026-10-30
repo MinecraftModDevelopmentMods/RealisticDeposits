@@ -57,7 +57,7 @@ class AbandonedMinePlannerTest {
 	}
 
 	@Test
-	void networkIsBoundedConnectedAndHasAUsableSurfaceLadder() {
+	void networkIsBoundedConnectedAndHasSteppedSurfaceAccess() {
 		StratiformSeamBody body = body(-1, -1);
 		AbandonedMinePlan plan = AbandonedMinePlanner.plan(body, ALWAYS, 100).get();
 		Set<Long> reachable = reachable(plan, plan.entrance());
@@ -77,12 +77,9 @@ class AbandonedMinePlannerTest {
 			}
 		}
 
-		for (int y = plan.landing().y(); y <= plan.entrance().y(); y++) {
-			assertEquals(MineBlock.LADDER_WEST,
-					plan.blocks().get(new MinePoint(plan.landing().x() + 1, y, plan.landing().z()).packed()));
-			assertEquals(MineBlock.PLANKS,
-					plan.blocks().get(new MinePoint(plan.landing().x() + 2, y, plan.landing().z()).packed()));
-		}
+		assertFalse(plan.blocks().containsValue(MineBlock.LADDER_WEST));
+		assertTrue(plan.blocks().values().stream().anyMatch(block -> block.name().startsWith("STAIRS_")));
+		assertEquals(plan.entrance(), MineDecline.plan(plan.landing(), 100, plan.identity()).entrance());
 	}
 
 	@Test

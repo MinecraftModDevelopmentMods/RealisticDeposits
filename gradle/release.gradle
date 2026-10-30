@@ -81,7 +81,7 @@ tasks.register('verifyJavadocOrdering') {
 tasks.register('verifyReleaseConfiguration') {
     group = 'verification'
     doLast {
-        if (project.mod_version != '0.2.0.110021'
+        if (project.mod_version != '0.3.0.110021'
                 || project.curseforge_project_id != '1689703'
                 || project.mod_artifact != 'RealisticDeposits'
                 || project.java_version != '8' || project.gradle_java_version != '17'

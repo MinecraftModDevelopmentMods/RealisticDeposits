@@ -4,6 +4,7 @@ import argparse
 import json
 import shutil
 import subprocess
+import zipfile
 from pathlib import Path
 
 from qualify_110 import checked_orespawn_sha256, digest, world_fingerprint, write_json, FORGE_JAR
@@ -35,15 +36,15 @@ def edit_definition(value):
     return count
 
 
-def expected_upgrade_profile(value):
+def expected_upgrade_profile(value, version):
     if isinstance(value, dict):
         if value.get("owner") == "realisticdeposits" and value.get("owner_version") == "0.1.1.110021":
-            value["owner_version"] = "0.2.0.110021"
+            value["owner_version"] = version
         for child in value.values():
-            expected_upgrade_profile(child)
+            expected_upgrade_profile(child, version)
     elif isinstance(value, list):
         for child in value:
-            expected_upgrade_profile(child)
+            expected_upgrade_profile(child, version)
 
 
 def main():
@@ -68,6 +69,9 @@ def main():
         target = inputs / f"{role}.jar"
         shutil.copy2(source, target)
     write_json(output / "artifacts.json", {path.name: digest(path) for path in inputs.iterdir()})
+    with zipfile.ZipFile(inputs / "current.jar") as archive:
+        metadata = json.loads(archive.read("mcmod.info"))
+        version = next(mod["version"] for mod in metadata if mod["modid"] == "realisticdeposits")
     baseline = output / "old-alpha"
     baseline.mkdir()
     shutil.copytree(args.runtime / "libraries", baseline / "libraries")
@@ -130,7 +134,7 @@ def main():
             assert edit_definition(profile) == 1, "Expected one captured deposit definition"
             write_json(profile_path, profile)
         expected_profile = json.loads(profile_path.read_text(encoding="utf-8"))
-        expected_upgrade_profile(expected_profile)
+        expected_upgrade_profile(expected_profile, version)
         profile_after_upgrade = None
         for phase in ("upgrade-first", "upgrade-reload", "upgrade-later"):
             run(args.java, target, phase, {"rd.mines.upgrade.optIn": str(explicit).lower()})

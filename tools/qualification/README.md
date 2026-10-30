@@ -52,7 +52,45 @@ whole-field reserves and native Fortune III rewards. Its reserve estimate is
 before cave, surface and host rejection, not a guarantee of recoverable coal.
 See the [coal walkthrough](COAL_TESTING.md) for the isolated visual-test launch.
 
-## Run it
+## Diamond checks
+
+`prepareDiamondQualification`, supplied by `probes.init.gradle`, builds the
+separate server probe for `diamonds_110.py`. It checks native gravel harvesting,
+Silk Touch, falling and save/reload, explosions, pipes, linked placers, disabled
+rules and saved terrain. Normal launches and public jars do not include it.
+
+`qualify_110.py --resource diamond` runs the policy/import matrix with controlled
+pipes above native diamonds. It disables unrelated shipped diamond definitions
+so only the intended rule controls background generation.
+
+`prepareDiamondSurvey` builds the area-weighted survey. `diamond_survey_110.py`
+uses four fixed calibration seeds and two separate holdouts. The default pass
+measures complete pipe geometry against in-memory native terrain and samples
+river sediment. `--native-sediment` also checks fully populated riverbeds;
+`--control` measures ordinary diamonds with both new rules disabled. Keep these
+results separate: pre-decoration sediment is not the complete river supply.
+Multiply rich gravel by 1/16 before comparing rewards. Fortune applies only
+after that roll and uses the same multiplier as vanilla diamond ore.
+
+See [the diamond walkthrough](DIAMOND_TESTING.md) for the separate manual launch.
+
+`diamond_balance_110.py` combines complete pipe surveys, fully decorated river
+samples and matched vanilla controls. All inputs must identify the same candidate.
+It checks the calibration, holdout and combined means against the 20% budget and
+reports seed-level uncertainty and Fortune rewards rather than counting rich
+gravel as if every block dropped a diamond.
+
+Mine checks cover iron, coal and individual diamond pipes, including the regular
+development configuration. Clear routes are walked up and down using native
+entity movement. Separate chest, water and structure fixtures check that unsafe
+sections remain sealed. Changing an ore pass can change vanilla's later
+decoration; that is not permission to remove an obstruction or rewrite old terrain.
+
+`frozen_mines_110.py` completes an older saved ladder shaft with both the old
+planner and the new stepped-access build. It compares their blocks, player
+markers, remaining sections and reloads. The source fixture is never modified.
+
+## Running the policy matrix
 
 For the imported-profile editor check, use the separate
 [visual-test walkthrough](EDITOR_TESTING.md). It opens four disposable
@@ -119,3 +157,20 @@ CI prepares an official Forge server from a checksum-pinned installer and
 runs the complete 32-case fresh/reload/later-chunk matrix. Failures retain
 their logs and result reports as workflow artifacts. The optional local
 upgrade suite also checks disposable copies of worlds made before the fix.
+
+## Diamond-pipe workings
+
+`pipe_mines_110.py` uses the same exact public jars and isolated mine probe.
+Supply `--java`, `--runtime`, `--mod`, `--orespawn`, `--probe` and a fresh
+`--output` directory. The probe is built by `prepareMineQualification` with
+`--init-script tools/qualification/probes.init.gradle`.
+
+The suite checks the shaft, galleries, player markers, saved layouts, reloads
+and later-generated sections. It also checks reversed chunk order, opt-out,
+zero chance, disabled source rules, water and native structures. The `normal`
+case retains all factory defaults; `mineralogy` additionally requires that
+target's compatible jar through `--mineralogy`. `mineralogy-flat` checks partial
+workings with active strata and no cross-chunk vanilla decoration. Native
+terrain cases populate the complete mine footprint before checking reloads;
+vanilla decoration in adjacent new chunks can otherwise change unworked ground.
+CI runs the controlled cases.

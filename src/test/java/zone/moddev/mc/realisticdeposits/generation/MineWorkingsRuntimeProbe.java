@@ -18,6 +18,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import net.minecraft.block.BlockLadder;
+import net.minecraft.block.BlockStairs;
+import net.minecraft.entity.monster.EntityZombie;
 import net.minecraft.block.BlockRail;
 import net.minecraft.block.BlockRailBase;
 import net.minecraft.block.state.IBlockState;
@@ -41,6 +43,7 @@ import zone.moddev.mc.realisticdeposits.geometry.AbandonedMinePlan;
 import zone.moddev.mc.realisticdeposits.geometry.AbandonedMinePlanner;
 import zone.moddev.mc.realisticdeposits.geometry.MineBlock;
 import zone.moddev.mc.realisticdeposits.geometry.MinePoint;
+import zone.moddev.mc.realisticdeposits.geometry.MineDecline;
 import zone.moddev.mc.realisticdeposits.geometry.RegionDepositPlanner;
 import zone.moddev.mc.realisticdeposits.geometry.StratiformSeamBody;
 import zone.moddev.mc.realisticdeposits.model.AbandonedMineSettings;
@@ -67,6 +70,12 @@ public final class MineWorkingsRuntimeProbe {
 			WorldServer world = server.worldServerForDimension(0);
 			require(world.getSeed() == SEED, "This probe is restricted to its disposable fixed-seed world");
 			require(world.getSaveHandler().getWorldDirectory().getName().equals("mine-test-world"), "Unexpected world directory");
+			if (Boolean.getBoolean("rd.mines.pipe")) {
+				PipeWorkingsRuntimeChecks.run(world, phase);
+				LOG.info("RD_MINES_PASS {}", phase);
+				return;
+			}
+
 			DepositDefinition definition = RealisticDepositsRuntime.state().definitions().get(0);
 			if (phase.startsWith("default-")) {
 				normalWorld(world, definition, phase);
@@ -204,7 +213,7 @@ public final class MineWorkingsRuntimeProbe {
 		}
 	}
 
-	private static int verify(WorldServer world, AbandonedMinePlan plan, List<Long> chunks, boolean hasMarker) {
+	static int verify(WorldServer world, AbandonedMinePlan plan, List<Long> chunks, boolean hasMarker) {
 		int checked = 0;
 		for (long key : chunks) {
 			Chunk chunk = world.getChunkProvider().loadChunk((int) (key >> 32), (int) key);
@@ -325,16 +334,26 @@ public final class MineWorkingsRuntimeProbe {
 			StratiformSeamBody chosen = null;
 			plan = null;
 
-			search: for (int x = 8; x < 24; x++) {
-				for (int z = 8; z < 24; z++) {
+			search: for (int x = 8; x < 72; x++) {
+				for (int z = 8; z < 72; z++) {
 					java.util.Optional<StratiformSeamBody> body = RegionDepositPlanner.plan(
 							definition, SEED, "minecraft:overworld", x, z);
 					if (!body.isPresent()) continue;
 					java.util.Optional<AbandonedMinePlan> proposed = AbandonedMinePlanner.plan(body.get(),
-							new AbandonedMineSettings(true, 1.0D), terrain.surfaceY(AbandonedMinePlanner.landing(body.get())));
+							new AbandonedMineSettings(true, 1.0D), terrain::naturalSurfaceY);
 					if (!proposed.isPresent()) continue;
 					AbandonedMinePlan candidate = proposed.get();
-					if (terrain.covered(candidate) && terrain.dry(candidate)
+					// Mountain decoration can add infested stone after the terrain
+					// preview. Use an ordinary-rock site for the walking fixture;
+					// obstruction handling has its own sealed-section checks.
+					boolean mountains = candidate.blocks().keySet().stream().map(MinePoint::unpack)
+							.anyMatch(point -> net.minecraftforge.common.BiomeDictionary.isBiomeOfType(
+									world.getBiomeProvider().getBiome(new BlockPos(point.x(), 0, point.z())),
+									net.minecraftforge.common.BiomeDictionary.Type.MOUNTAIN));
+					if (mountains) continue;
+
+					if (terrain.surfaceY(candidate.entrance()) == candidate.entrance().y()
+							&& terrain.covered(candidate) && terrain.dry(candidate)
 							&& MineWorkingsGenerator.biomesAllowed(candidate, definition, world)) {
 						chosen = body.get();
 						plan = candidate;
@@ -379,7 +398,40 @@ public final class MineWorkingsRuntimeProbe {
 		}
 	}
 
-	private static void verifyAccess(WorldServer world, AbandonedMinePlan plan, boolean hasMarker) {
+	static void verifyAccess(WorldServer world, AbandonedMinePlan plan, boolean hasMarker) {
+		if (!plan.blocks().containsValue(MineBlock.LADDER_WEST)) {
+			List<MineDecline.Step> steps = MineDecline.plan(plan.landing(), plan.entrance().y(), plan.identity()).steps();
+			require(steps.get(steps.size() - 1).point().equals(plan.entrance()), "The access entrance moved");
+			int loaded = world.getChunkProvider().getLoadedChunkCount();
+
+			for (int direction : new int[] {1, -1}) {
+				List<MineDecline.Step> route = new ArrayList<>(steps);
+				if (direction < 0) Collections.reverse(route);
+				MinePoint start = route.get(0).point();
+				net.minecraft.entity.Entity walker = new EntityZombie(world);
+				walker.stepHeight = 0.6F;
+				walker.setPosition(start.x() + 0.5D, start.y(), start.z() + 0.5D);
+
+				for (int index = 1; index < route.size(); index++) {
+					MinePoint target = route.get(index).point();
+					for (int tick = 0; tick < 12; tick++) {
+						double dx = Math.max(-0.125D, Math.min(0.125D, target.x() + 0.5D - walker.posX));
+						double dz = Math.max(-0.125D, Math.min(0.125D, target.z() + 0.5D - walker.posZ));
+						walker.move(dx, -0.15D, dz);
+					}
+
+					require(Math.abs(walker.posX - target.x() - 0.5D) < 0.2D
+							&& Math.abs(walker.posZ - target.z() - 0.5D) < 0.2D,
+							"The walker could not pass the incline at " + target + ": " + walker.posX + "," + walker.posY + "," + walker.posZ);
+					require(walker.posY >= target.y() - 0.05D && walker.posY <= target.y() + 1.05D,
+							"Unsupported or obstructed stair at " + target);
+				}
+			}
+
+			require(loaded == world.getChunkProvider().getLoadedChunkCount(), "Walking access loaded a neighbouring chunk");
+			return;
+		}
+
 		MinePoint landing = plan.landing();
 		for (int y = landing.y(); y <= plan.entrance().y(); y++) {
 			BlockPos ladder = new BlockPos(landing.x() + 1, y, landing.z());
@@ -407,7 +459,7 @@ public final class MineWorkingsRuntimeProbe {
 		throw new IllegalStateException("The fixture has no suitable distant deposit");
 	}
 
-	private static void populate(WorldServer world, int x, int z) {
+	static void populate(WorldServer world, int x, int z) {
 		ChunkProviderServer provider = world.getChunkProvider();
 		for (int dx = 0; dx <= 1; dx++) {
 			for (int dz = 0; dz <= 1; dz++) provider.provideChunk(x + dx, z + dz);
@@ -415,7 +467,7 @@ public final class MineWorkingsRuntimeProbe {
 		provider.provideChunk(x, z).populateChunk(provider, provider.chunkGenerator);
 	}
 
-	private static List<Long> allChunks(AbandonedMinePlan plan) {
+	static List<Long> allChunks(AbandonedMinePlan plan) {
 		List<Long> chunks = new ArrayList<>();
 		for (int x = Math.floorDiv(plan.bounds().minimumX(), 16); x <= Math.floorDiv(plan.bounds().maximumX(), 16); x++) {
 			for (int z = Math.floorDiv(plan.bounds().minimumZ(), 16); z <= Math.floorDiv(plan.bounds().maximumZ(), 16); z++) {
@@ -425,7 +477,7 @@ public final class MineWorkingsRuntimeProbe {
 		return chunks;
 	}
 
-	private static List<Long> populatedChunks(WorldServer world, AbandonedMinePlan plan) {
+	static List<Long> populatedChunks(WorldServer world, AbandonedMinePlan plan) {
 		List<Long> chunks = new ArrayList<>();
 		for (long key : allChunks(plan)) {
 			Chunk chunk = world.getChunkProvider().getLoadedChunk((int) (key >> 32), (int) key);
@@ -434,11 +486,14 @@ public final class MineWorkingsRuntimeProbe {
 		return chunks;
 	}
 
-	private static BlockPos marker(AbandonedMinePlan plan) {
+	static BlockPos marker(AbandonedMinePlan plan) {
+		if (!plan.blocks().containsValue(MineBlock.LADDER_WEST)) {
+			return new BlockPos(plan.landing().x() + 3, plan.landing().y() + 1, plan.landing().z() + 3);
+		}
 		return new BlockPos(plan.landing().x(), plan.landing().y() + 1, plan.landing().z());
 	}
 
-	private static String terrainHash(WorldServer world, List<Long> chunks) throws Exception {
+	static String terrainHash(WorldServer world, List<Long> chunks) throws Exception {
 		MessageDigest digest = MessageDigest.getInstance("SHA-256");
 		ByteBuffer value = ByteBuffer.allocate(4);
 		for (long key : chunks) {
@@ -457,7 +512,7 @@ public final class MineWorkingsRuntimeProbe {
 		return hex(digest.digest());
 	}
 
-	private static String planHash(AbandonedMinePlan plan) throws Exception {
+	static String planHash(AbandonedMinePlan plan) throws Exception {
 		require(plan != null, "Expected saved mine");
 		MessageDigest digest = MessageDigest.getInstance("SHA-256");
 		ByteBuffer value = ByteBuffer.allocate(12);
@@ -469,7 +524,7 @@ public final class MineWorkingsRuntimeProbe {
 		return hex(digest.digest());
 	}
 
-	private static String join(List<Long> values) {
+	static String join(List<Long> values) {
 		StringBuilder text = new StringBuilder();
 		for (long value : values) {
 			if (text.length() > 0) text.append(',');
@@ -478,7 +533,7 @@ public final class MineWorkingsRuntimeProbe {
 		return text.toString();
 	}
 
-	private static List<Long> split(String text) {
+	static List<Long> split(String text) {
 		List<Long> values = new ArrayList<>();
 		for (String value : text.split(",")) values.add(Long.parseLong(value));
 		return values;
@@ -490,13 +545,17 @@ public final class MineWorkingsRuntimeProbe {
 		return value.toString();
 	}
 
-	private static IBlockState expected(MineBlock block) {
+	static IBlockState expected(MineBlock block) {
 		switch (block) {
 			case AIR: return Blocks.AIR.getDefaultState();
 			case PLANKS: return Blocks.PLANKS.getDefaultState();
 			case FENCE: return Blocks.OAK_FENCE.getDefaultState();
 			case COBWEB: return Blocks.WEB.getDefaultState();
 			case COBBLESTONE: return Blocks.COBBLESTONE.getDefaultState();
+			case STAIRS_NORTH: return Blocks.OAK_STAIRS.getDefaultState().withProperty(BlockStairs.FACING, EnumFacing.NORTH);
+			case STAIRS_SOUTH: return Blocks.OAK_STAIRS.getDefaultState().withProperty(BlockStairs.FACING, EnumFacing.SOUTH);
+			case STAIRS_EAST: return Blocks.OAK_STAIRS.getDefaultState().withProperty(BlockStairs.FACING, EnumFacing.EAST);
+			case STAIRS_WEST: return Blocks.OAK_STAIRS.getDefaultState().withProperty(BlockStairs.FACING, EnumFacing.WEST);
 			case LADDER_WEST: return Blocks.LADDER.getDefaultState().withProperty(BlockLadder.FACING, EnumFacing.WEST);
 			case RAIL_EAST_WEST: return Blocks.RAIL.getDefaultState().withProperty(BlockRail.SHAPE, BlockRailBase.EnumRailDirection.EAST_WEST);
 			case RAIL_NORTH_SOUTH: return Blocks.RAIL.getDefaultState().withProperty(BlockRail.SHAPE, BlockRailBase.EnumRailDirection.NORTH_SOUTH);
@@ -504,7 +563,7 @@ public final class MineWorkingsRuntimeProbe {
 		}
 	}
 
-	private static void require(boolean condition, String message) {
+	static void require(boolean condition, String message) {
 		if (!condition) throw new IllegalStateException(message);
 	}
 }

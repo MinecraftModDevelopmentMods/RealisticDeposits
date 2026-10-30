@@ -21,8 +21,8 @@
       "selection_chance": 0.25,
       "salt": 7146057694168187204,
       "abandoned_mine": {
-        "enabled": false,
-        "chance": 0.15
+        "enabled": true,
+        "chance": 1.0
       },
       "shape": {
         "type": "stratiform_seam",

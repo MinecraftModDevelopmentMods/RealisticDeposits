@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -14,6 +15,8 @@ import java.util.Random;
 import java.util.Set;
 import java.util.WeakHashMap;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -21,6 +24,7 @@ import net.minecraft.block.Block;
 import net.minecraft.block.BlockLadder;
 import net.minecraft.block.BlockRail;
 import net.minecraft.block.BlockRailBase;
+import net.minecraft.block.BlockStairs;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.init.Blocks;
 import net.minecraft.nbt.NBTTagCompound;
@@ -159,9 +163,8 @@ public final class MineWorkingsGenerator implements IWorldGenerator {
 	private static void decide(Candidate candidate, MineWorldData data, Session session,
 			WorldServer world, IChunkGenerator generator, long currentChunk) {
 		MineTerrainSampler terrain = new MineTerrainSampler(world, generator);
-		MinePoint landing = AbandonedMinePlanner.landing(candidate.body);
 		Optional<AbandonedMinePlan> proposed = AbandonedMinePlanner.plan(candidate.body,
-				candidate.definition.abandonedMine(), terrain.surfaceY(landing));
+				candidate.definition.abandonedMine(), terrain::naturalSurfaceY);
 		if (!proposed.isPresent()) {
 			data.reject(candidate.key, "No safe surface access");
 			return;
@@ -173,7 +176,8 @@ public final class MineWorkingsGenerator implements IWorldGenerator {
 		} else if (!world.getWorldBorder().contains(new BlockPos(plan.bounds().minimumX(), 64, plan.bounds().minimumZ()))
 				|| !world.getWorldBorder().contains(new BlockPos(plan.bounds().maximumX(), 64, plan.bounds().maximumZ()))) {
 			data.reject(candidate.key, "World border");
-		} else if (!terrain.dry(plan) || !terrain.covered(plan) || !biomesAllowed(plan, candidate.definition, world)) {
+		} else if (terrain.surfaceY(plan.entrance()) != plan.entrance().y()
+				|| !terrain.dry(plan) || !terrain.covered(plan) || !biomesAllowed(plan, candidate.definition, world)) {
 			data.reject(candidate.key, "Water, insufficient cover or an excluded biome");
 		} else if (intersectsStructure(plan.bounds(), world)) {
 			data.reject(candidate.key, "Another structure");
@@ -328,7 +332,7 @@ public final class MineWorkingsGenerator implements IWorldGenerator {
 			addHost(blocks, new ResourceLocation(definition.resource()));
 		}
 		OreSpawnApi.getActiveProfile(world.getMinecraftServer()).ifPresent(profile -> {
-			for (ResourceLocation rock : profile.rockIds()) addHost(blocks, rock);
+			for (ResourceLocation rock : naturalRockBlocks(profile.toJson())) addHost(blocks, rock);
 		});
 
 		// These may be natural-looking, but they also make up villages and ruins.
@@ -337,6 +341,25 @@ public final class MineWorkingsGenerator implements IWorldGenerator {
 		blocks.remove(Blocks.LOG);
 		blocks.remove(Blocks.LOG2);
 		blocks.remove(Blocks.BEDROCK);
+		return blocks;
+	}
+
+	static Set<ResourceLocation> naturalRockBlocks(JsonObject profile) {
+		Set<ResourceLocation> blocks = new LinkedHashSet<>();
+		if (!profile.has("rocks") || !profile.get("rocks").isJsonObject()) return blocks;
+
+		// Rock IDs name geology definitions, not registered blocks. Read the
+		// declared block instead, just as OreSpawn does when building its strata.
+		for (Map.Entry<String, JsonElement> entry : profile.getAsJsonObject("rocks").entrySet()) {
+			if (!entry.getValue().isJsonObject()) continue;
+			JsonObject rock = entry.getValue().getAsJsonObject();
+			if (rock.has("enabled") && !rock.get("enabled").getAsBoolean()) continue;
+			if (!rock.has("block") || !rock.get("block").isJsonPrimitive()
+					|| !rock.getAsJsonPrimitive("block").isString()) continue;
+
+			blocks.add(new ResourceLocation(rock.get("block").getAsString()));
+		}
+
 		return blocks;
 	}
 
@@ -351,6 +374,10 @@ public final class MineWorkingsGenerator implements IWorldGenerator {
 			case FENCE: return Blocks.OAK_FENCE.getDefaultState();
 			case COBWEB: return Blocks.WEB.getDefaultState();
 			case COBBLESTONE: return Blocks.COBBLESTONE.getDefaultState();
+			case STAIRS_NORTH: return Blocks.OAK_STAIRS.getDefaultState().withProperty(BlockStairs.FACING, EnumFacing.NORTH);
+			case STAIRS_SOUTH: return Blocks.OAK_STAIRS.getDefaultState().withProperty(BlockStairs.FACING, EnumFacing.SOUTH);
+			case STAIRS_EAST: return Blocks.OAK_STAIRS.getDefaultState().withProperty(BlockStairs.FACING, EnumFacing.EAST);
+			case STAIRS_WEST: return Blocks.OAK_STAIRS.getDefaultState().withProperty(BlockStairs.FACING, EnumFacing.WEST);
 			case LADDER_WEST: return Blocks.LADDER.getDefaultState().withProperty(BlockLadder.FACING, EnumFacing.WEST);
 			case RAIL_EAST_WEST: return Blocks.RAIL.getDefaultState().withProperty(
 					BlockRail.SHAPE, BlockRailBase.EnumRailDirection.EAST_WEST);

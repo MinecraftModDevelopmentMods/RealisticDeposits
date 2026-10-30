@@ -5,7 +5,7 @@ The publication guard still rejects local OreSpawn candidates; a release must
 use the public dependency, not an experimental jar.
 
 The **Release Realistic Deposits** action runs from the repository's default
-branch. Enter the full numeric version, such as `0.2.0.110021`; the final
+branch. Enter the full numeric version, such as `0.3.0.110021`; the final
 component identifies the Minecraft version and loader. CurseForge's alpha,
 beta or release label is separate from the numeric version.
 

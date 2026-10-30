@@ -13,6 +13,17 @@ from ci_runtime import FORGE_HASH
 OLD_MINE_BUILD = "58BAA8A5A69B904ED18387C48D8E4CE63B1C411A6DF06C3056B720C6228604A5"
 
 
+def captured_settings(value):
+    """Ignore only OreSpawn's refreshed display version for this mod's source rows."""
+    if isinstance(value, list):
+        return [captured_settings(item) for item in value]
+    if not isinstance(value, dict):
+        return value
+    own_source = value.get("owner") == "realisticdeposits" and str(value.get("source_id", "")).startswith("realisticdeposits:")
+    return {key: captured_settings(item) for key, item in value.items()
+            if not (own_source and key == "owner_version")}
+
+
 def run(java, root, phase):
     command = [str(java), "-Xms256m", "-Xmx2G", "-XX:ActiveProcessorCount=2",
                "-Drd.coal.upgrade=true", f"-Drd.coal.phase={phase}", "-jar", FORGE_JAR, "nogui"]
@@ -40,12 +51,14 @@ def main():
     for name in ("java", "runtime", "mod", "old-mod", "orespawn", "probe", "output"):
         parser.add_argument("--" + name, required=True, type=Path)
     parser.add_argument("--local-orespawn-sha256", help="Explicit checksum for an optional unpublished test candidate")
+    parser.add_argument("--old-mod-sha256", help="Exact checksum of a different, explicitly selected old release")
+    parser.add_argument("--new-rules", choices=("coal", "diamond"), default="coal")
     parser.add_argument("--mineralogy", type=Path)
     parser.add_argument("--legacy-profile", type=Path,
                         help="Read-only geology reference for a separate legacy-coal-layer comparison")
     args = parser.parse_args()
     assert not args.output.exists(), "Keep old evidence and choose a new output"
-    assert digest(args.old_mod) == OLD_MINE_BUILD
+    assert digest(args.old_mod) == (args.old_mod_sha256 or OLD_MINE_BUILD).upper()
     assert digest(args.runtime / FORGE_JAR) == FORGE_HASH
     checked_orespawn_sha256(args.orespawn, args.local_orespawn_sha256)
     args.output.mkdir(parents=True)
@@ -80,14 +93,14 @@ def main():
     first = run(args.java, root, "first")
     source_hash = world_fingerprint(root / "coal-upgrade-world")
     profile_relative = "coal-upgrade-world/serverconfig/orespawn-worldgen.json"
-    original_profile = digest(root / profile_relative)
+    original_profile = json.loads((root / profile_relative).read_text(encoding="utf-8"))
     original_config = digest(root / "config/realisticdeposits/deposits/vanilla.json")
     completed = {}
     for name in ("control", "upgraded"):
         target = args.output / name
         shutil.copytree(root, target)
         if name == "upgraded":
-            # Both local candidates have the same unreleased product version.
+            # Replace the jar only in the disposable upgraded copy.
             shutil.copy2(args.mod, target / "mods" / args.old_mod.name)
         report = run(args.java, target, "complete")
         reload = run(args.java, target, "reload")
@@ -95,10 +108,11 @@ def main():
         assert first["chest"] == report["chest"] == reload["chest"]
         assert report["raw_marker"] and reload["raw_marker"]
         assert report["later_terrain"] == reload["later_terrain"]
-        assert digest(target / profile_relative) == original_profile, "World settings were changed"
-        assert digest(target / "config/realisticdeposits/deposits/vanilla.json") == original_config
         profile = json.loads((target / profile_relative).read_text(encoding="utf-8"))
-        assert not any("overworld_coal_measures" in key for key in profile["ores"]), "Coal was injected into an old world"
+        assert captured_settings(profile) == captured_settings(original_profile), "World settings were changed"
+        assert digest(target / "config/realisticdeposits/deposits/vanilla.json") == original_config
+        new_rule = "overworld_diamond_" if args.new_rules == "diamond" else "overworld_coal_measures"
+        assert not any(new_rule in key for key in profile["ores"]), "New rules were injected into an old world"
         completed[name] = report
     assert completed["control"] == completed["upgraded"], "The update changed later-generated terrain or coal supply"
     assert world_fingerprint(root / "coal-upgrade-world") == source_hash

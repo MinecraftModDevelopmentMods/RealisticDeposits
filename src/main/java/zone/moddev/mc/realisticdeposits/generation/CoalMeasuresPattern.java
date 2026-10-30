@@ -91,6 +91,7 @@ public final class CoalMeasuresPattern {
 			int chunkZ = context.chunkZ() << 4;
 			int regionSize = definition.regionSpacingChunks() * 16;
 			int radius = (definition.coal().strikeLength().maximum() + definition.coal().downDipWidth().maximum()) / 2 + 3;
+			if (definition.abandonedMine().enabled() && definition.abandonedMine().chance() > 0) radius += 96;
 			int count = 0;
 			java.util.List<int[]> structures = CoalStructureProtection.inChunk(context.chunkX(), context.chunkZ());
 			GeologyColumn[] columns = new GeologyColumn[256];
@@ -111,9 +112,10 @@ public final class CoalMeasuresPattern {
 						}
 						bodies.put(key, selected);
 					}
-					if (!selected.isPresent() || !selected.get().bounds().intersectsChunk(context.chunkX(), context.chunkZ())) continue;
+					if (!selected.isPresent()) continue;
 					CoalMeasuresBody body = selected.get();
 					MineWorkingsGenerator.offer(context, definition, body);
+					if (!body.bounds().intersectsChunk(context.chunkX(), context.chunkZ())) continue;
 
 					for (int x = chunkX; x < chunkX + 16; x++) {
 						for (int z = chunkZ; z < chunkZ + 16; z++) {

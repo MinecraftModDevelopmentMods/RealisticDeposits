@@ -1,5 +1,6 @@
 package zone.moddev.mc.realisticdeposits.geometry;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -26,6 +27,25 @@ public final class AbandonedMinePlanner {
 
 	public static MinePoint landing(MineableDepositBody body) {
 		return body.miningRoutePoint(anchorAlong(body), 0.0D);
+	}
+
+	public static Optional<AbandonedMinePlan> plan(MineableDepositBody body,
+			AbandonedMineSettings settings, java.util.function.ToIntBiFunction<Integer, Integer> surface) {
+		if (!selected(body, settings)) return Optional.empty();
+		MinePoint landing = landing(body);
+		int initial = surface.applyAsInt(landing.x(), landing.z());
+		if (initial < 0) return Optional.empty();
+
+		for (int offset = 0; offset <= 16; offset++) {
+			for (int sign : offset == 0 ? new int[] {1} : new int[] {1, -1}) {
+				int height = initial + offset * sign;
+				if (height < landing.y() + 6 || height - landing.y() > MAXIMUM_SHAFT_DEPTH || height > 245) continue;
+				MinePoint entrance = MineDecline.plan(landing, height, body.identity().seed()).entrance();
+				if (surface.applyAsInt(entrance.x(), entrance.z()) == height) return plan(body, settings, height);
+			}
+		}
+
+		return Optional.empty();
 	}
 
 	public static Optional<AbandonedMinePlan> plan(MineableDepositBody body,
@@ -92,10 +112,36 @@ public final class AbandonedMinePlanner {
 				if (air.contains(rubble)) blocks.put(rubble, MineBlock.COBBLESTONE);
 			}
 		}
-		shaft(blocks, landing, surfaceY);
+		MineDecline access = MineDecline.plan(landing, surfaceY, body.identity().seed());
+		access.build(blocks);
+		if (!sealClosedPockets(blocks, access.entrance(), landing)) return Optional.empty();
 
 		return Optional.of(new AbandonedMinePlan(body.identity().seed(),
-				new MinePoint(landing.x(), surfaceY, landing.z()), landing, blocks));
+				access.entrance(), landing, blocks));
+	}
+
+	private static boolean sealClosedPockets(Map<Long, MineBlock> blocks, MinePoint entrance, MinePoint landing) {
+		Set<Long> connected = new LinkedHashSet<>();
+		ArrayDeque<MinePoint> queue = new ArrayDeque<>();
+		queue.add(entrance);
+		int[][] offsets = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
+
+		while (!queue.isEmpty()) {
+			MinePoint point = queue.remove();
+			MineBlock block = blocks.get(point.packed());
+			if (block == null || !block.passable() || !connected.add(point.packed())) continue;
+
+			for (int[] offset : offsets) {
+				queue.add(new MinePoint(point.x() + offset[0], point.y() + offset[1], point.z() + offset[2]));
+			}
+		}
+
+		if (!connected.contains(landing.packed())) return false;
+
+		// Stair foundations can seal a small pocket where they meet a gallery.
+		// Leave that rock in place rather than carving an inaccessible void.
+		blocks.entrySet().removeIf(cell -> cell.getValue().passable() && !connected.contains(cell.getKey()));
+		return true;
 	}
 
 	private static double anchorAlong(MineableDepositBody body) {
@@ -158,36 +204,6 @@ public final class AbandonedMinePlanner {
 			if (StableHash.unit(detail ^ SELECTION_SALT) < 0.12D) {
 				put(blocks, point.x() + (eastWest ? 0 : 1), point.y() + 2,
 						point.z() + (eastWest ? 1 : 0), MineBlock.COBWEB);
-			}
-		}
-	}
-
-	private static void shaft(Map<Long, MineBlock> blocks, MinePoint landing, int surfaceY) {
-		for (int y = landing.y(); y <= surfaceY + 2; y++) {
-			for (int dx = -1; dx <= 1; dx++) {
-				for (int dz = -1; dz <= 1; dz++) {
-					put(blocks, landing.x() + dx, y, landing.z() + dz, MineBlock.AIR);
-				}
-			}
-
-			put(blocks, landing.x() + 2, y, landing.z(), MineBlock.PLANKS);
-			if (y <= surfaceY) put(blocks, landing.x() + 1, y, landing.z(), MineBlock.LADDER_WEST);
-
-			if ((y - landing.y()) % 7 == 0 || y == surfaceY + 2) {
-				for (int offset = -2; offset <= 2; offset++) {
-					put(blocks, landing.x() - 2, y, landing.z() + offset, MineBlock.PLANKS);
-					put(blocks, landing.x() + 2, y, landing.z() + offset, MineBlock.PLANKS);
-					put(blocks, landing.x() + offset, y, landing.z() - 2, MineBlock.PLANKS);
-					put(blocks, landing.x() + offset, y, landing.z() + 2, MineBlock.PLANKS);
-				}
-			}
-		}
-
-		for (int dx = -2; dx <= 2; dx++) {
-			for (int dz = -2; dz <= 2; dz++) {
-				if (Math.abs(dx) == 2 || Math.abs(dz) == 2) {
-					put(blocks, landing.x() + dx, surfaceY - 1, landing.z() + dz, MineBlock.PLANKS);
-				}
 			}
 		}
 	}

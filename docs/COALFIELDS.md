@@ -36,7 +36,8 @@ shows every setting.
 - 384-768 blocks along strike and 128-256 blocks across.
 - Two to four beds, 1-3 blocks thick, separated by 4-12 blocks of rock.
 - Hybrid generation with 15% ordinary background coal.
-- Abandoned workings off by default, with a 15% attempt chance when enabled.
+- Abandoned workings attempted at every new coalfield where safe. Existing
+  catalogues and saved-world settings keep their choices.
 
 Candidate selection is not a promise that every region has a coalfield.
 Geology, available height, caves and safe hosts can reduce or reject a deposit.

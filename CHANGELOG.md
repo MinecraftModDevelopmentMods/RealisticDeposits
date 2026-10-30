@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.3.0.110021
+
+Beta for Minecraft 1.10.2.
+
+- Add rare, irregular diamond pipes and linked river placers. Keep the existing
+  iron and coal deposit shapes and ore settings.
+- Add diamond-bearing gravel with a vanilla gravel background and subtle mineral
+  flecks. Mining leaves ordinary gravel and has a 1-in-16 diamond chance; Fortune
+  increases successful drops. Silk Touch and falling preserve the rich block.
+- Keep diamond settings in their own catalogue. Preserve existing world profiles,
+  background generation and terrain rather than adding new rules to old saves.
+- Keep 15% ordinary background diamonds and the 1-in-16 gravel roll. Tune pipes
+  to supply most diamonds, with river pockets as an occasional bonus.
+- Honour explicit world-rule switches even when their catalogue default is off.
+- Add separate diamond previews, packaged-server checks and an isolated test launch.
+- Attempt abandoned workings at every new iron formation, coalfield and diamond
+  pipe where safe. Stepped access tunnels lead to short underground crosscuts;
+  river placers stay untouched. Keep existing world settings and opt-outs unchanged.
+- Let workings pass through the natural rock blocks declared by Mineralogy's
+  OreSpawn profile, without confusing rock-definition names with block names.
+- Replace long ladder shafts in new workings with winding stair runs, level
+  turning landings, timber supports and entrance guardrails. Keep already saved
+  mine layouts intact, including their unfinished sections.
+
 ## 0.2.0.110021
 
 Beta for Minecraft 1.10.2.

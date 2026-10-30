@@ -72,6 +72,7 @@ public final class StratiformSeamPattern {
 		int chunkMaxZ = chunkMinZ + 15;
 		int regionBlocks = definition.regionSpacingChunks() * 16;
 		int radius = maximumHorizontalRadius(definition);
+		if (definition.abandonedMine().enabled() && definition.abandonedMine().chance() > 0) radius += 96;
 		int minRegionX = Math.floorDiv(chunkMinX - radius, regionBlocks);
 		int maxRegionX = Math.floorDiv(chunkMaxX + radius, regionBlocks);
 		int minRegionZ = Math.floorDiv(chunkMinZ - radius, regionBlocks);
@@ -85,9 +86,9 @@ public final class StratiformSeamPattern {
 						context.worldSeed(), context.dimension().toString(), regionX, regionZ);
 				if (!planned.isPresent()) continue;
 				StratiformSeamBody body = planned.get();
-				if (!body.bounds().intersectsChunk(context.chunkX(), context.chunkZ())
-						|| !acceptsCenter(definition, body, sampler)) continue;
+				if (!acceptsCenter(definition, body, sampler)) continue;
 				MineWorkingsGenerator.offer(context, definition, body);
+				if (!body.bounds().intersectsChunk(context.chunkX(), context.chunkZ())) continue;
 				BlockBounds bounds = body.bounds();
 				for (int x = Math.max(chunkMinX, bounds.minimumX());
 						x <= Math.min(chunkMaxX, bounds.maximumX()); x++) {

@@ -69,6 +69,14 @@ public final class RealisticDepositsCommand extends CommandBase {
 		DepositDefinition definition = selectDefinition(state, args.length == 4 ? args[3] : null);
 		World world = sender.getEntityWorld();
 		String dimension = dimensionId(world.provider.getDimension());
+		if (definition.isDiamond()) {
+			if (!(world instanceof net.minecraft.world.WorldServer)) {
+				throw new CommandException("Diamond previews require a server world");
+			}
+			sender.sendMessage(new TextComponentString(zone.moddev.mc.realisticdeposits.generation.DiamondPattern
+					.preview(definition, (net.minecraft.world.WorldServer) world, regionX, regionZ)));
+			return;
+		}
 		Optional<? extends MineableDepositBody> planned = definition.isCoal()
 				? CoalMeasuresBody.plan(definition, world.getSeed(), dimension, regionX, regionZ)
 				: RegionDepositPlanner.plan(definition, world.getSeed(), dimension, regionX, regionZ);

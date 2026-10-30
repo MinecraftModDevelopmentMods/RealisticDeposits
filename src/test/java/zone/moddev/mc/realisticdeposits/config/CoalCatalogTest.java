@@ -2,7 +2,6 @@ package zone.moddev.mc.realisticdeposits.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -28,7 +27,8 @@ class CoalCatalogTest {
 		assertEquals(0.15D, catalogue.definitions().get(0).effectiveBackgroundGenerationScale().getAsDouble());
 		assertTrue(catalogue.definitions().get(0).isCoal());
 		assertEquals(32, catalogue.definitions().get(0).regionSpacingChunks());
-		assertFalse(catalogue.definitions().get(0).abandonedMine().enabled());
+		assertTrue(catalogue.definitions().get(0).abandonedMine().enabled());
+		assertEquals(1.0D, catalogue.definitions().get(0).abandonedMine().chance());
 	}
 
 	@Test
