@@ -67,8 +67,8 @@ final class MineTerrainSampler {
 	boolean covered(AbandonedMinePlan plan) {
 		for (Map.Entry<Long, MineBlock> cell : plan.blocks().entrySet()) {
 			MinePoint point = MinePoint.unpack(cell.getKey());
-			if (Math.abs(point.x() - plan.landing().x()) <= 2
-					&& Math.abs(point.z() - plan.landing().z()) <= 2) continue;
+			int portalDistance = Math.abs(point.x() - plan.entrance().x()) + Math.abs(point.z() - plan.entrance().z());
+			if (portalDistance <= 20 && point.y() >= plan.entrance().y() - 6) continue;
 			if (heightAt(point.x(), point.z()) < point.y() + 2) return false;
 		}
 
@@ -121,5 +121,9 @@ final class MineTerrainSampler {
 
 		heights.put(column, -1);
 		return -1;
+	}
+
+	int naturalSurfaceY(int x, int z) {
+		return heightAt(x, z);
 	}
 }

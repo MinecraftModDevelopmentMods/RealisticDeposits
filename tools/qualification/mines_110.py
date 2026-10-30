@@ -44,7 +44,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("java", "runtime", "mod", "orespawn", "probe", "output"):
         parser.add_argument(f"--{name}", required=True, type=Path)
-    cases = ["flat", "normal", "off", "chance-zero", "wet", "order-reverse", "order-shuffle", "structure", "blocked"]
+    cases = ["flat", "normal", "off", "chance-zero", "wet", "order-reverse", "order-shuffle", "structure", "blocked", "diamond-coexistence"]
     parser.add_argument("--cases", nargs="+", default=cases, choices=cases)
     parser.add_argument("--local-orespawn-sha256", help="Exact checksum of the deliberately selected local candidate")
     args = parser.parse_args()
@@ -74,12 +74,13 @@ def main():
         layers = "minecraft:bedrock,127*minecraft:stone,minecraft:grass"
         if case == "wet":
             layers = "minecraft:bedrock,127*minecraft:stone,20*minecraft:water"
-        level_type = "DEFAULT" if case == "normal" else "FLAT"
-        generator_settings = "" if case == "normal" else f"3;{layers};1;"
+        normal = case in ("normal", "diamond-coexistence")
+        level_type = "DEFAULT" if normal else "FLAT"
+        generator_settings = "" if normal else f"3;{layers};1;"
         settings = (
             f"level-name=mine-test-world\nlevel-seed=3346071746553592696\nlevel-type={level_type}\n"
             f"generator-settings={generator_settings}\nserver-ip=127.0.0.1\nserver-port={48610 + index}\n"
-            f"online-mode=false\ngenerate-structures={'true' if case == 'normal' else 'false'}\nview-distance=3\nmax-tick-time=-1\n"
+            f"online-mode=false\ngenerate-structures={'true' if normal else 'false'}\nview-distance=3\nmax-tick-time=-1\n"
             "allow-nether=false\nspawn-animals=false\nspawn-monsters=false\n"
         )
         (root / "server.properties").write_text(settings, encoding="utf-8", newline="\n")
@@ -88,16 +89,29 @@ def main():
         catalog["deposits"][0]["abandoned_mine"] = {
             "enabled": case != "off", "chance": 0.0 if case == "chance-zero" else 1.0}
         write_json(root / "config/realisticdeposits/deposits/vanilla.json", catalog)
+        # This suite checks iron workings. Coal and pipe access have separate
+        # fixtures, so their new defaults must not create unrelated mine data.
+        coal = json.loads((ROOT / "src/main/resources/assets/realisticdeposits/defaults/coal.json").read_text())
+        coal["deposits"][0]["abandoned_mine"]["enabled"] = False
+        write_json(root / "config/realisticdeposits/deposits/coal.json", coal)
+        # Keep the accepted iron/mine baseline's vanilla decoration sequence.
+        # A separate case exercises the new diamond background policy as well.
+        diamonds = json.loads((ROOT / "src/main/resources/assets/realisticdeposits/defaults/diamonds.json").read_text())
+        for definition in diamonds["deposits"]:
+            definition["enabled"] = case == "diamond-coexistence"
+            if "abandoned_mine" in definition:
+                definition["abandoned_mine"]["enabled"] = False
+        write_json(root / "config/realisticdeposits/deposits/diamonds.json", diamonds)
         if case == "flat":
             phases = ["first", "complete", "reload"]
-        elif case == "normal":
+        elif normal:
             phases = ["default-first", "default-reload"]
         elif case.startswith("order-") or case in ("structure", "blocked"):
             phases = [case]
         else:
             phases = ["wet" if case == "wet" else "off"]
         for phase in phases:
-            run(args.java, root, phase)
+            run(args.java, root, phase, {"rd.mines.diamondCoexistence": str(case == "diamond-coexistence").lower()})
             results.append({"case": case, "phase": phase, "passed": True})
         write_json(output / "results.json", {"passed": True, "boots": len(results), "results": results})
 

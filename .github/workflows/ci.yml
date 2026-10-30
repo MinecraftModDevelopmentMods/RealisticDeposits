@@ -138,7 +138,7 @@ jobs:
 
       - name: Build the isolated packaged-server probe
         run: >-
-          ./gradlew preparePolicyQualification --init-script tools/qualification/probes.init.gradle
+          ./gradlew preparePolicyQualification prepareDiamondQualification prepareMineQualification --init-script tools/qualification/probes.init.gradle
           --offline --no-daemon --max-workers=2
           -Dorg.gradle.java.installations.paths="$JAVA_HOME,$JAVA_HOME_8_X64,$JAVA_HOME_25_X64"
           -Dorg.gradle.java.installations.auto-detect=false
@@ -156,9 +156,9 @@ jobs:
           if-no-files-found: error
           retention-days: 30
           path: |
-            build/libs/RealisticDeposits-0.2.0.110021.jar
-            build/libs/RealisticDeposits-0.2.0.110021-sources.jar
-            build/libs/RealisticDeposits-0.2.0.110021-javadoc.jar
+            build/libs/RealisticDeposits-0.3.0.110021.jar
+            build/libs/RealisticDeposits-0.3.0.110021-sources.jar
+            build/libs/RealisticDeposits-0.3.0.110021-javadoc.jar
             build/release/SHA256SUMS
             CHANGELOG.md
 

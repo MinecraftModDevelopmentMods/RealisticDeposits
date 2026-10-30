@@ -113,6 +113,12 @@ public final class DepositDefinition {
 		this.salt = salt;
 		this.shape = Objects.requireNonNull(seam, "shape");
 		this.abandonedMine = Objects.requireNonNull(abandonedMine, "abandonedMine");
+		if (isDiamondPlacer() && abandonedMine.enabled()) {
+			throw new IllegalArgumentException("River placers do not support underground workings: " + id);
+		}
+		if (isDiamondPlacer() && interaction != InteractionPolicy.ADDITIVE) {
+			throw new IllegalArgumentException("The source pipe, not its placer, controls background diamonds: " + id);
+		}
 		if (alignment == AlignmentMode.MASSIVE_RARE
 				&& (!this.geomes.isEmpty() || !this.rockFamilies.isEmpty())) {
 			throw new IllegalArgumentException("Massive-and-rare deposit cannot declare geology alignment: " + id);
@@ -167,6 +173,11 @@ public final class DepositDefinition {
 	public long salt() { return salt; }
 	public DepositShapeSettings shape() { return shape; }
 	public boolean isCoal() { return shape instanceof CoalMeasuresSettings; }
+	public boolean isDiamondPipe() { return shape instanceof DiamondPipeSettings; }
+	public boolean isDiamondPlacer() { return shape instanceof DiamondPlacerSettings; }
+	public boolean isDiamond() { return isDiamondPipe() || isDiamondPlacer(); }
+	public DiamondPipeSettings pipe() { return (DiamondPipeSettings) shape; }
+	public DiamondPlacerSettings placer() { return (DiamondPlacerSettings) shape; }
 	public StratiformSeamSettings seam() { return (StratiformSeamSettings) shape; }
 	public CoalMeasuresSettings coal() { return (CoalMeasuresSettings) shape; }
 
@@ -183,7 +194,8 @@ public final class DepositDefinition {
 				+ (effectiveBackgroundGenerationScale().isPresent()
 						? effectiveBackgroundGenerationScale().getAsDouble() : "additive")
 				+ (abandonedMine.enabled() ? "|abandoned_mine:" + abandonedMine.chance() : "")
-				+ (isCoal() ? "|shape:coal_measures" : "");
+				+ (isCoal() ? "|shape:coal_measures" : "")
+				+ (isDiamond() ? "|diamond:" + toJson() : "");
 	}
 
 	/** Deterministic schema-1 representation embedded in OreSpawn pattern settings. */

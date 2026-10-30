@@ -88,6 +88,16 @@ public final class CoalRuntimeProbe {
 			}
 			if ("first".equals(phase)) populate(world, first);
 			if ("later".equals(phase)) populate(world, later);
+			if (Boolean.getBoolean("rd.coal.workings")) {
+				CoalMeasuresBody mineBody = "later".equals(phase) || "stable".equals(phase) ? later : first;
+				AbandonedMinePlan plan = MineWorldData.get(world).plan(mineBody.identity().toString());
+				if (plan == null) throw new IllegalStateException("The selected coal workings were not built");
+				for (long chunk : MineWorkingsRuntimeProbe.allChunks(plan)) {
+					MineWorkingsRuntimeProbe.populate(world, (int) (chunk >> 32), (int) chunk);
+				}
+				MineWorkingsRuntimeProbe.verify(world, plan, MineWorkingsRuntimeProbe.allChunks(plan), false);
+				MineWorkingsRuntimeProbe.verifyAccess(world, plan, false);
+			}
 
 			JsonObject report = new JsonObject();
 			report.addProperty("phase", phase);
@@ -128,8 +138,9 @@ public final class CoalRuntimeProbe {
 				if (workings) {
 					MineTerrainSampler terrain = new MineTerrainSampler(world, world.getChunkProvider().chunkGenerator);
 					Optional<AbandonedMinePlan> mine = AbandonedMinePlanner.plan(fitted.get(), definition.abandonedMine(),
-							terrain.surfaceY(AbandonedMinePlanner.landing(fitted.get())));
+							terrain::naturalSurfaceY);
 					if (!mine.isPresent()) { rejected[1]++; continue; }
+					if (terrain.surfaceY(mine.get().entrance()) != mine.get().entrance().y()) { rejected[1]++; continue; }
 					if (!terrain.dry(mine.get())) { rejected[2]++; continue; }
 					if (!terrain.covered(mine.get())) { rejected[3]++; continue; }
 					if (!MineWorkingsGenerator.biomesAllowed(mine.get(), definition, world)) { rejected[4]++; continue; }

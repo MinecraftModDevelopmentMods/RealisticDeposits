@@ -78,6 +78,7 @@ public final class RealisticDepositsRuntime {
 		File defaultCatalog = new File(deposits, "vanilla.json");
 		createDefault(defaultCatalog);
 		createDefault(new File(deposits, "coal.json"), "/assets/realisticdeposits/defaults/coal.json");
+		createDefault(new File(deposits, "diamonds.json"), "/assets/realisticdeposits/defaults/diamonds.json");
 		List<File> files = jsonFiles(deposits);
 		List<DepositCatalog> catalogs = new ArrayList<>();
 		List<DepositDefinition> definitions = new ArrayList<>();
@@ -187,6 +188,7 @@ public final class RealisticDepositsRuntime {
 	}
 
 	private static void validateResourcePolicies(List<DepositDefinition> definitions) {
+		zone.moddev.mc.realisticdeposits.integration.OreSpawnIntegration.validateDiamondLinks(definitions);
 		Map<String, String> contracts = new LinkedHashMap<>();
 		for (DepositDefinition definition : definitions) {
 			if (!definition.enabled()) continue;
@@ -250,7 +252,8 @@ public final class RealisticDepositsRuntime {
 		List<File> result = new ArrayList<>();
 		collectJson(directory, result);
 		// Keep existing catalogue order; the new default must not become the first deposit.
-		result.sort(Comparator.comparingInt((File file) -> "coal.json".equals(file.getName()) ? 1 : 0)
+		result.sort(Comparator.comparingInt((File file) -> "diamonds.json".equals(file.getName()) ? 2
+				: "coal.json".equals(file.getName()) ? 1 : 0)
 				.thenComparing(File::getPath));
 		return result;
 	}

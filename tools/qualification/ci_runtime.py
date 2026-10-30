@@ -62,10 +62,31 @@ def main():
                "--java", str(args.java), "--runtime", str(runtime),
                "--mod", str(mod), "--orespawn", str(orespawn), "--probe", str(probe),
                "--output", str(output / "matrix"), "--jobs", "2"]
-    subprocess.run(command, check=True)
-    result = json.loads((output / "matrix/results.json").read_text())
-    if not result["passed"] or len(result["cases"]) != 32:
-        raise AssertionError("The complete packaged policy matrix did not pass")
+    for resource in ("iron", "diamond"):
+        matrix_output = output / ("matrix" if resource == "iron" else "diamond-matrix")
+        matrix_command = list(command)
+        matrix_command[matrix_command.index("--output") + 1] = str(matrix_output)
+        matrix_command.extend(["--resource", resource])
+        subprocess.run(matrix_command, check=True)
+        result = json.loads((matrix_output / "results.json").read_text())
+        if not result["passed"] or len(result["cases"]) != 32:
+            raise AssertionError(f"The complete {resource} policy matrix did not pass")
+
+    diamond_probe = candidate / "diamond-probe.jar"
+    shutil.copy2(ROOT / "build/qualification/diamond-probe.jar", diamond_probe)
+    subprocess.run([sys.executable, str(ROOT / "tools/qualification/diamonds_110.py"),
+                    "--java", str(args.java), "--runtime", str(runtime), "--mod", str(mod),
+                    "--orespawn", str(orespawn), "--probe", str(diamond_probe),
+                    "--output", str(output / "diamond-runtime"),
+                    "--cases", "standalone", "reverse", "source-off", "placer-off", "source-enable"], check=True)
+
+    mine_probe = candidate / "mine-probe.jar"
+    shutil.copy2(ROOT / "build/qualification/mine-probe.jar", mine_probe)
+    subprocess.run([sys.executable, str(ROOT / "tools/qualification/pipe_mines_110.py"),
+                    "--java", str(args.java), "--runtime", str(runtime), "--mod", str(mod),
+                    "--orespawn", str(orespawn), "--probe", str(mine_probe),
+                    "--output", str(output / "pipe-workings"),
+                    "--cases", "flat", "reverse", "off", "chance-zero", "source-off", "structure", "wet", "blocked"], check=True)
 
 
 if __name__ == "__main__":

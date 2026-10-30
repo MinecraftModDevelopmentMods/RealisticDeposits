@@ -1,0 +1,66 @@
+// This profile has separate saves and settings from ordinary development runs.
+tasks.named('isolateEclipseProductionRuns') {
+    doLast {
+        [['runClient.launch', 'runDiamondDepositsClient.launch'],
+         ['runServer.launch', 'runDiamondDepositsServer.launch'],
+         ['runClient.launch', 'runUndergroundMinesClient.launch'],
+         ['runServer.launch', 'runUndergroundMinesServer.launch']].each { pair ->
+            String contents = file(pair[0]).getText('UTF-8')
+            String directory = pair[1].contains('UndergroundMines') ? 'run-underground-mines' : 'run-diamond-deposits'
+            contents = contents.replaceAll(
+                    /(<stringAttribute key="org\.eclipse\.jdt\.launching\.WORKING_DIRECTORY" value=")[^"]*("\/>)/,
+                    '$1' + file(directory).absolutePath.replace('\\', '\\\\') + '$2')
+            file(pair[1]).setText(contents.replace('\r\n', '\n'), 'UTF-8')
+        }
+    }
+}
+
+tasks.named('verifyEclipseProductionClasspath') {
+    doLast {
+        ['runDiamondDepositsClient.launch', 'runDiamondDepositsServer.launch',
+         'runUndergroundMinesClient.launch', 'runUndergroundMinesServer.launch'].each { name ->
+            String contents = file(name).getText('UTF-8').replace('\\', '/')
+            String directory = name.contains('UndergroundMines') ? 'run-underground-mines' : 'run-diamond-deposits'
+            if (!contents.contains(directory) || !contents.contains('ATTR_EXCLUDE_TEST_CODE')) {
+                throw new GradleException("${name} must use separate saves and production-only output")
+            }
+            ['src/test', 'bin/test', 'junit-', 'diamond-probe', 'diamond-survey'].each { forbidden ->
+                if (contents.contains(forbidden)) throw new GradleException("${name} exposes ${forbidden}")
+            }
+        }
+    }
+}
+
+tasks.register('prepareUndergroundMinesManual') {
+    group = 'verification'
+    description = 'Prepares fresh underground-mine defaults without changing existing test saves.'
+    dependsOn tasks.named('verifyEclipseProductionClasspath')
+    doLast {
+        ['vanilla', 'coal', 'diamonds'].each { name ->
+            File target = file("run-underground-mines/config/realisticdeposits/deposits/${name}.json")
+            if (!target.exists()) {
+                target.parentFile.mkdirs()
+                target.setText(file("src/main/resources/assets/realisticdeposits/defaults/${name}.json")
+                        .getText('UTF-8').replace('\r\n', '\n'), 'UTF-8')
+            }
+        }
+        logger.lifecycle('Use runUndergroundMinesClient.launch and tools/qualification/DIAMOND_TESTING.md.')
+        logger.lifecycle('Other profiles and existing saves were left alone.')
+    }
+}
+
+tasks.register('prepareDiamondDepositsManual') {
+    group = 'verification'
+    description = 'Prepares a separate diamond test and its Eclipse launches.'
+    dependsOn tasks.named('verifyEclipseProductionClasspath')
+    doLast {
+        File target = file('run-diamond-deposits/config/realisticdeposits/deposits/diamonds.json')
+        if (!target.exists()) {
+            target.parentFile.mkdirs()
+            target.setText(file('src/main/resources/assets/realisticdeposits/defaults/diamonds.json')
+                    .getText('UTF-8').replace('\r\n', '\n'), 'UTF-8')
+        }
+        logger.lifecycle('Use runDiamondDepositsClient.launch and tools/qualification/DIAMOND_TESTING.md.')
+        logger.lifecycle('Existing settings and saves were left alone. Use a new world for the fixed-seed walkthrough.')
+    }
+}

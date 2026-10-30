@@ -88,7 +88,7 @@ jobs:
             echo
             echo "- mode: \`publish\`"
             echo "- release_version: \`$GITHUB_REF_NAME\`"
-            echo "- curseforge_release_level: \`alpha\`"
+            echo "- curseforge_release_level: \`beta\`"
             echo "- confirm_live_publication: \`true\`"
             echo
             echo "The dispatcher checks the release bundle and requires explicit publication confirmation."

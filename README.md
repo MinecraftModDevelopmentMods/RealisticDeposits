@@ -5,21 +5,19 @@
 
 ![Realistic Deposits logo](src/main/resources/assets/realisticdeposits/textures/logo.png)
 
-Realistic Deposits is an extension for
-[MMD OreSpawn](https://github.com/MinecraftModDevelopmentMods/OreSpawn) that
-is being built to make valuable minerals feel like geological discoveries.
-Instead of scattering a steady supply of small, isolated ore clusters
-throughout the world, it plans rare formations large enough to reward
-exploration and support sprawling mines, rail networks, and long-term resource
-projects.
+Realistic Deposits makes finding ore a reason to explore, then build a proper
+mine. Rare iron districts, layered coalfields and diamond pipes give you
+deposits worth returning to, with old workings leading into some of them.
+Small pockets of diamond-bearing river gravel offer another way to prospect.
+It runs on [MMD OreSpawn](https://github.com/MinecraftModDevelopmentMods/OreSpawn).
 
 The project starts with Minecraft 1.10.2 and is intended to follow the
 maintained OreSpawn branches across Forge and NeoForge.
 
-This beta adds coalfields and optional abandoned workings
-alongside the existing iron districts. Back up your world before updating.
-
-Coalfields use the exact-host API in the published OreSpawn 4.1.4.110021 release.
+Version 0.3.0.110021 is a beta for Minecraft 1.10.2. It adds diamond deposits
+and replaces deep ladder shafts in new workings with stepped entrances.
+Existing worlds keep their settings and saved mine layouts. Back up important
+worlds before updating.
 
 ## Current features
 
@@ -37,14 +35,17 @@ Coalfields use the exact-host API in the published OreSpawn 4.1.4.110021 release
   Mineralogy is not required. See [coalfields](docs/COALFIELDS.md).
 - Additive, hybrid, and replacement policies for controlling interaction with
   ordinary ore generation.
+- Rare diamond pipes and linked river placers, without adding new host rocks
+  or reshaping rivers. See [diamond deposits](docs/DIAMONDS.md).
 - Configurable support for vanilla and modded resources.
 - Safe generation that avoids air, fluids, bedrock, block entities, structures,
   and undeclared host blocks.
-- Live reload for geometry and alignment tuning, with structural changes
-  clearly deferred until restart.
+- Live reload for iron and coal geometry. Diamond geometry and other structural
+  changes wait until restart.
 - An entry in both Forge's Mods configuration and OreSpawn's World Settings.
-- Optional abandoned workings, with surface access and short seam-following
-  galleries. They are off by default; see the [mine settings](docs/ABANDONED_MINES.md).
+- Abandoned workings with sloping, stepped entrances and short underground galleries.
+  New defaults attempt them at every iron formation, coalfield and diamond
+  pipe where safe. River placers stay untouched. See the [mine settings](docs/ABANDONED_MINES.md).
 
 Coalfields can already use Mineralogy's existing shale, siltstone and
 conglomerate. Wider catalogues for Mineralogy, Base Metals, Modern Metals,
@@ -71,6 +72,7 @@ The first launch creates:
 ```text
 config/realisticdeposits/deposits/vanilla.json
 config/realisticdeposits/deposits/coal.json
+config/realisticdeposits/deposits/diamonds.json
 ```
 
 The supplied definition describes one rare iron district using a 640–960 block
@@ -132,8 +134,9 @@ formations:
 /realisticdeposits reload
 ```
 
-`reload` requires operator permission. It immediately applies `enabled`,
-selection, shape, height, geome, family, and alignment changes. Resource,
+`reload` requires operator permission. For iron and coal it applies `enabled`,
+selection, shape, height, geome, family, and alignment changes. Diamond geometry
+and source links require a restart. Resource,
 dimension, host, biome-filter, interaction-policy, scale, added, and removed
 definition changes are structural and take effect after restart. Abandoned-mine
 settings are also captured with the world's deposit definition. New provider

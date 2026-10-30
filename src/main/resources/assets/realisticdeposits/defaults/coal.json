@@ -17,7 +17,7 @@
       "region_spacing_chunks": 32,
       "selection_chance": 0.5,
       "salt": 2685821657736338717,
-      "abandoned_mine": {"enabled": false, "chance": 0.15},
+      "abandoned_mine": {"enabled": true, "chance": 1.0},
       "shape": {
         "type": "coal_measures",
         "strike_length": [384, 768],

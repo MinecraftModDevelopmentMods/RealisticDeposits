@@ -38,6 +38,7 @@ import zone.moddev.mc.realisticdeposits.geometry.RegionDepositPlanner;
 import zone.moddev.mc.realisticdeposits.geometry.StratiformSeamBody;
 import zone.moddev.mc.realisticdeposits.geometry.CoalMeasuresBody;
 import zone.moddev.mc.realisticdeposits.geometry.MineableDepositBody;
+import zone.moddev.mc.realisticdeposits.geometry.DiamondDistrict;
 import zone.moddev.mc.realisticdeposits.model.DepositDefinition;
 
 /** Packaged-server qualification fixture, excluded from the public mod jars. */
@@ -59,7 +60,9 @@ public final class PolicyQualificationProbe {
 
     @SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
     public void observeIron(OreGenEvent.GenerateMinable event) {
-        if (event.getType() != (coal() ? OreGenEvent.GenerateMinable.EventType.COAL : OreGenEvent.GenerateMinable.EventType.IRON)) {
+        OreGenEvent.GenerateMinable.EventType observed = diamond() ? OreGenEvent.GenerateMinable.EventType.DIAMOND
+                : coal() ? OreGenEvent.GenerateMinable.EventType.COAL : OreGenEvent.GenerateMinable.EventType.IRON;
+        if (event.getType() != observed) {
             return;
         }
 
@@ -234,6 +237,7 @@ public final class PolicyQualificationProbe {
 
     private static Set<Long> plannedPositions(long worldSeed, int base) {
         DepositDefinition definition = RealisticDepositsRuntime.state().definitions().get(0);
+        if (definition.isDiamondPipe()) return diamondPositions(definition, worldSeed, base);
         int min = base * 16;
         int max = (base + SAMPLE_SIDE) * 16 - 1;
         int spacing = definition.regionSpacingChunks() * 16;
@@ -272,7 +276,39 @@ public final class PolicyQualificationProbe {
 
     private static boolean coal() { return "coal".equals(System.getProperty("rd.qualification.resource")); }
 
-    private static Block resource() { return coal() ? Blocks.COAL_ORE : Blocks.IRON_ORE; }
+    private static boolean diamond() { return "diamond".equals(System.getProperty("rd.qualification.resource")); }
+
+    private static Block resource() { return diamond() ? Blocks.DIAMOND_ORE : coal() ? Blocks.COAL_ORE : Blocks.IRON_ORE; }
+
+    private static Set<Long> diamondPositions(DepositDefinition definition, long seed, int base) {
+        Set<Long> positions = new HashSet<>();
+        int min = base * 16;
+        int max = (base + SAMPLE_SIDE) * 16 - 1;
+        int spacing = definition.regionSpacingChunks() * 16;
+        int reach = definition.pipe().districtRadius() + definition.pipe().upperDiameter().maximum();
+        DiamondDistrict.Site site = new DiamondDistrict.Site() {
+            @Override public int surfaceY(int x, int z) { return 241; }
+            @Override public String geome(int x, int z, int y) { return null; }
+        };
+
+        for (int rx = Math.floorDiv(min - reach, spacing); rx <= Math.floorDiv(max + reach, spacing); rx++) {
+            for (int rz = Math.floorDiv(min - reach, spacing); rz <= Math.floorDiv(max + reach, spacing); rz++) {
+                DiamondDistrict district = DiamondDistrict.plan(definition, seed, "minecraft:overworld", rx, rz, site).orElse(null);
+                if (district == null) continue;
+                for (DiamondDistrict.Pipe pipe : district.pipes()) {
+                    BlockBounds bounds = pipe.bounds();
+                    for (int x = Math.max(min, bounds.minimumX()); x <= Math.min(max, bounds.maximumX()); x++) {
+                        for (int z = Math.max(min, bounds.minimumZ()); z <= Math.min(max, bounds.maximumZ()); z++) {
+                            for (int y = pipe.bottomY(); y <= pipe.topY(); y++) {
+                                if (pipe.isOreAt(x, y, z)) positions.add(positionKey(x, y, z));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return positions;
+    }
 
     private static long positionKey(int x, int y, int z) {
         return ((long) (x & 0x3ffffff) << 38) | ((long) (z & 0x3ffffff) << 12) | (y & 0xfff);

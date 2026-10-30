@@ -647,3 +647,4 @@ tasks.named('check') {
 
 apply from: 'gradle/release.gradle'
 apply from: 'gradle/coal-manual.gradle'
+apply from: 'gradle/diamond-manual.gradle'

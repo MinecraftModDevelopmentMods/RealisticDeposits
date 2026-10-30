@@ -1,5 +1,38 @@
 gradle.afterProject { project, state ->
     if (project == project.rootProject && state.failure == null) {
+        def surveyInput = project.tasks.register('diamondSurveyProbeInput', Jar) {
+            dependsOn project.tasks.named('testClasses')
+            from project.sourceSets.test.output.classesDirs
+            include 'zone/moddev/mc/realisticdeposits/generation/DiamondSurveyProbe*.class'
+            archiveFileName = 'diamond-survey-deobf.jar'
+            destinationDirectory = project.layout.buildDirectory.dir('qualification')
+        }
+        def surveyPackaged = project.renamer.classes(surveyInput) {
+            map.from project.minecraft.dependency.toSrgFile
+            output = project.layout.buildDirectory.file('qualification/diamond-survey.jar')
+        }
+        project.tasks.register('prepareDiamondSurvey') {
+            group = 'verification'
+            description = 'Builds the isolated area-weighted diamond reward survey.'
+            dependsOn surveyPackaged
+        }
+        def diamondInput = project.tasks.register('diamondQualificationProbeInput', Jar) {
+            dependsOn project.tasks.named('testClasses')
+            from project.sourceSets.test.output.classesDirs
+            include 'zone/moddev/mc/realisticdeposits/generation/DiamondRuntimeProbe*.class'
+            include 'zone/moddev/mc/realisticdeposits/generation/DiamondGravelRuntimeChecks*.class'
+            archiveFileName = 'diamond-probe-deobf.jar'
+            destinationDirectory = project.layout.buildDirectory.dir('qualification')
+        }
+        def diamondPackaged = project.renamer.classes(diamondInput) {
+            map.from project.minecraft.dependency.toSrgFile
+            output = project.layout.buildDirectory.file('qualification/diamond-probe.jar')
+        }
+        project.tasks.register('prepareDiamondQualification') {
+            group = 'verification'
+            description = 'Builds the isolated diamond deposit server probe.'
+            dependsOn diamondPackaged
+        }
         def input = project.tasks.register('policyQualificationProbeInput', Jar) {
             dependsOn project.tasks.named('testClasses')
             from project.sourceSets.test.output.classesDirs
@@ -23,6 +56,8 @@ gradle.afterProject { project, state ->
             dependsOn project.tasks.named('testClasses')
             from project.sourceSets.test.output.classesDirs
             include 'zone/moddev/mc/realisticdeposits/generation/CoalRuntimeProbe*.class'
+            include 'zone/moddev/mc/realisticdeposits/generation/MineWorkingsRuntimeProbe*.class'
+            include 'zone/moddev/mc/realisticdeposits/generation/PipeWorkingsRuntimeChecks*.class'
             archiveFileName = 'coal-probe-deobf.jar'
             destinationDirectory = project.layout.buildDirectory.dir('qualification')
         }
@@ -57,6 +92,7 @@ gradle.afterProject { project, state ->
             dependsOn project.tasks.named('testClasses')
             from project.sourceSets.test.output.classesDirs
             include 'zone/moddev/mc/realisticdeposits/generation/MineWorkingsRuntimeProbe*.class'
+            include 'zone/moddev/mc/realisticdeposits/generation/PipeWorkingsRuntimeChecks*.class'
             archiveFileName = 'mine-probe-deobf.jar'
             destinationDirectory = project.layout.buildDirectory.dir('qualification')
         }
@@ -64,6 +100,18 @@ gradle.afterProject { project, state ->
         def minePackaged = project.renamer.classes(mineInput) {
             map.from project.minecraft.dependency.toSrgFile
             output = project.layout.buildDirectory.file('qualification/mine-probe.jar')
+        }
+
+        def frozenInput = project.tasks.register('frozenMineProbeInput', Jar) {
+            dependsOn project.tasks.named('testClasses')
+            from project.sourceSets.test.output.classesDirs
+            include 'zone/moddev/mc/realisticdeposits/generation/FrozenMineRuntimeProbe*.class'
+            archiveFileName = 'frozen-mine-probe-deobf.jar'
+            destinationDirectory = project.layout.buildDirectory.dir('qualification')
+        }
+        def frozenPackaged = project.renamer.classes(frozenInput) {
+            map.from project.minecraft.dependency.toSrgFile
+            output = project.layout.buildDirectory.file('qualification/frozen-mine-probe.jar')
         }
 
         def oldTerrainInput = project.tasks.register('legacyMineProbeInput', Jar) {
@@ -83,6 +131,7 @@ gradle.afterProject { project, state ->
             group = 'verification'
             description = 'Builds the isolated abandoned-mine server probe.'
             dependsOn minePackaged
+            dependsOn frozenPackaged
             dependsOn oldTerrainPackaged
         }
     }
