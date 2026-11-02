@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -25,10 +26,62 @@ def download(url, target, expected):
         raise AssertionError(f"Unexpected download checksum: {url}")
 
 
+def suite_plan():
+    suites = {}
+    for resource in ("iron", "coal", "diamond", "gold"):
+        suites["policy-" + resource] = {
+            "script": "qualify_110.py", "probe": "policy-probe.jar",
+            "arguments": ["--resource", resource], "ports": True,
+        }
+    suites["policy-gold-mesa"] = {
+        "script": "qualify_110.py", "probe": "policy-probe.jar",
+        "arguments": ["--resource", "gold", "--mesa"], "ports": True,
+    }
+    for name, script, probe, cases, ports in (
+        ("iron-workings", "mines_110.py", "mine-probe.jar",
+         ["flat", "off", "chance-zero", "wet", "order-reverse", "order-shuffle", "structure", "blocked"], False),
+        ("coal", "coal_110.py", "coal-probe.jar", ["standalone", "normal", "structure", "workings-flat"], False),
+        ("diamonds", "diamonds_110.py", "diamond-probe.jar",
+         ["standalone", "reverse", "source-off", "placer-off", "source-enable"], True),
+        ("gold", "gold_110.py", "gold-probe.jar",
+         ["standalone", "normal", "reverse", "source-off", "source-enable", "source-world-off",
+          "source-dimension-off", "placer-off"], True),
+        ("workings", "pipe_mines_110.py", "mine-probe.jar",
+         ["flat", "reverse", "off", "chance-zero", "source-off", "structure", "wet", "blocked"], False),
+        ("gold-workings", "gold_mines_110.py", "mine-probe.jar",
+         ["flat", "reverse", "off", "chance-zero", "source-off", "structure", "wet", "blocked"], True),
+    ):
+        suites[name] = {"script": script, "probe": probe, "arguments": ["--cases", *cases], "ports": ports}
+    return suites
+
+
+def suite_command(spec, java, runtime, mod, orespawn, probe, output, port):
+    command = [sys.executable, str(ROOT / "tools/qualification" / spec["script"]),
+               "--java", str(java), "--runtime", str(runtime), "--mod", str(mod),
+               "--orespawn", str(orespawn), "--probe", str(probe), "--output", str(output),
+               *spec["arguments"]]
+    if spec["ports"]:
+        command.extend(["--base-port", str(port)])
+    return command
+
+
+def check_runtime_log(text):
+    errors = [line for line in text.splitlines()
+              if re.search(r"/(ERROR|FATAL)\]|Tried to assign a mutable BlockPos|\bGL ERROR\b", line)
+              and "FML appears to be missing any signature data" not in line]
+    assert not errors, "Unexpected packaged-runtime log errors: " + "\n".join(errors)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--java", required=True, type=Path)
     parser.add_argument("--output", type=Path, default=ROOT / "build/qualification/packaged")
+    parser.add_argument("--runtime", type=Path, help="Reuse an existing official runtime without modifying it")
+    parser.add_argument("--mod", type=Path, help="Use a sealed local release jar")
+    parser.add_argument("--orespawn", type=Path, help="Use an already downloaded, checksum-verified public jar")
+    parser.add_argument("--probe-directory", type=Path, default=ROOT / "build/qualification")
+    parser.add_argument("--only", nargs="+", choices=tuple(suite_plan()), help="Run selected suites locally")
+    parser.add_argument("--base-port", type=int, default=32000)
     args = parser.parse_args()
     properties = dict(line.split("=", 1) for line in (ROOT / "gradle.properties").read_text().splitlines()
                       if "=" in line and not line.startswith("#"))
@@ -39,54 +92,55 @@ def main():
     candidate = output / "candidate"
     candidate.mkdir()
     mod = candidate / f"RealisticDeposits-{properties['mod_version']}.jar"
-    probe = candidate / "policy-probe.jar"
-    shutil.copy2(ROOT / "build/libs" / mod.name, mod)
-    shutil.copy2(ROOT / "build/qualification/policy-probe.jar", probe)
-    installer = output / "forge-installer.jar"
-    download("https://maven.minecraftforge.net/net/minecraftforge/forge/1.10.2-12.18.3.2511/"
-             "forge-1.10.2-12.18.3.2511-installer.jar", installer, INSTALLER_HASH)
-    runtime = output / "runtime"
-    runtime.mkdir()
-    with (output / "install.log").open("w") as log:
-        subprocess.run([str(args.java), "-jar", str(installer), "--installServer", str(runtime)],
-                       cwd=runtime, stdout=log, stderr=subprocess.STDOUT, check=True, timeout=600)
+    shutil.copy2(args.mod or ROOT / "build/libs" / mod.name, mod)
+    plan = suite_plan()
+    selected = args.only or list(plan)
+    assert len(set(selected)) == len(selected), "Do not replay a suite in the same evidence directory"
+    for name in {plan[suite]["probe"] for suite in selected}:
+        shutil.copy2(args.probe_directory / name, candidate / name)
+
+    runtime = args.runtime.resolve() if args.runtime else output / "runtime"
+    if not args.runtime:
+        installer = output / "forge-installer.jar"
+        download("https://maven.minecraftforge.net/net/minecraftforge/forge/1.10.2-12.18.3.2511/"
+                 "forge-1.10.2-12.18.3.2511-installer.jar", installer, INSTALLER_HASH)
+        runtime.mkdir()
+        with (output / "install.log").open("w") as log:
+            subprocess.run([str(args.java), "-jar", str(installer), "--installServer", str(runtime)],
+                           cwd=runtime, stdout=log, stderr=subprocess.STDOUT, check=True, timeout=600,
+                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        (runtime / "eula.txt").write_text("eula=true\n")
     forge = runtime / "forge-1.10.2-12.18.3.2511-universal.jar"
     if hashlib.sha256(forge.read_bytes()).hexdigest().upper() != FORGE_HASH:
         raise AssertionError("The installed Forge server changed")
-    (runtime / "eula.txt").write_text("eula=true\n")
+    assert "eula=true" in (runtime / "eula.txt").read_text(), "Accept the supplied runtime's EULA first"
     orespawn = output / f"OreSpawn-{properties['orespawn_version']}.jar"
     file_id = properties["orespawn_curse_file_id"]
-    download(f"https://cursemaven.com/curse/maven/mmd-orespawn-245586/{file_id}/"
-             f"mmd-orespawn-245586-{file_id}.jar", orespawn, properties["orespawn_sha256"])
-    command = [sys.executable, str(ROOT / "tools/qualification/qualify_110.py"),
-               "--java", str(args.java), "--runtime", str(runtime),
-               "--mod", str(mod), "--orespawn", str(orespawn), "--probe", str(probe),
-               "--output", str(output / "matrix"), "--jobs", "2"]
-    for resource in ("iron", "diamond"):
-        matrix_output = output / ("matrix" if resource == "iron" else "diamond-matrix")
-        matrix_command = list(command)
-        matrix_command[matrix_command.index("--output") + 1] = str(matrix_output)
-        matrix_command.extend(["--resource", resource])
-        subprocess.run(matrix_command, check=True)
-        result = json.loads((matrix_output / "results.json").read_text())
-        if not result["passed"] or len(result["cases"]) != 32:
-            raise AssertionError(f"The complete {resource} policy matrix did not pass")
+    if args.orespawn:
+        shutil.copy2(args.orespawn, orespawn)
+    else:
+        download(f"https://cursemaven.com/curse/maven/mmd-orespawn-245586/{file_id}/"
+                 f"mmd-orespawn-245586-{file_id}.jar", orespawn, properties["orespawn_sha256"])
+    assert hashlib.sha256(orespawn.read_bytes()).hexdigest().upper() == properties["orespawn_sha256"]
 
-    diamond_probe = candidate / "diamond-probe.jar"
-    shutil.copy2(ROOT / "build/qualification/diamond-probe.jar", diamond_probe)
-    subprocess.run([sys.executable, str(ROOT / "tools/qualification/diamonds_110.py"),
-                    "--java", str(args.java), "--runtime", str(runtime), "--mod", str(mod),
-                    "--orespawn", str(orespawn), "--probe", str(diamond_probe),
-                    "--output", str(output / "diamond-runtime"),
-                    "--cases", "standalone", "reverse", "source-off", "placer-off", "source-enable"], check=True)
-
-    mine_probe = candidate / "mine-probe.jar"
-    shutil.copy2(ROOT / "build/qualification/mine-probe.jar", mine_probe)
-    subprocess.run([sys.executable, str(ROOT / "tools/qualification/pipe_mines_110.py"),
-                    "--java", str(args.java), "--runtime", str(runtime), "--mod", str(mod),
-                    "--orespawn", str(orespawn), "--probe", str(mine_probe),
-                    "--output", str(output / "pipe-workings"),
-                    "--cases", "flat", "reverse", "off", "chance-zero", "source-off", "structure", "wet", "blocked"], check=True)
+    completed = []
+    for index, name in enumerate(selected):
+        suite = plan[name]
+        target = output / name
+        command = suite_command(suite, args.java, runtime, mod, orespawn,
+                                candidate / suite["probe"], target, args.base_port + index * 100)
+        subprocess.run(command, check=True)
+        result = json.loads((target / "results.json").read_text())
+        assert result["passed"], f"Packaged suite failed: {name}"
+        assert not list(target.rglob("crash-*.txt")), f"Packaged suite produced a crash: {name}"
+        for log in target.rglob("*.log"):
+            check_runtime_log(log.read_text(encoding="utf-8", errors="replace"))
+        if name.startswith("policy-"):
+            assert len(result["cases"]) == 32 and len(result["switches"]) == 2
+        completed.append(name)
+        (output / "results.json").write_text(json.dumps({
+            "passed": len(completed) == len(selected), "expected_suites": selected, "suites": completed,
+        }, indent=2) + "\n")
 
 
 if __name__ == "__main__":

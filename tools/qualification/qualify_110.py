@@ -11,12 +11,16 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 
-ORESPAWN_SHA256 = "DB254E9E865685A74262DE9D469A006AB3C8053573CC6136FD4A8591AD806CA3"
+ORESPAWN_SHA256 = "1E580EBB8D93B1256E2E81C7D0D815DEAAAC58A028CB5A77A52773B62048E010"
 FORGE_JAR = "forge-1.10.2-12.18.3.2511-universal.jar"
 POLICIES = ("additive", "hybrid-default", "hybrid-15", "replacement")
 ORIGINS = ("native", "os1", "os3", "existing-override")
 DEPOSIT_ID = "realisticdeposits:deposit/realisticdeposits/qualification_iron"
 RESOURCE_KEY = "iron_ore"
+
+
+def disabled_control_key():
+    return "lapis_ore" if RESOURCE_KEY == "gold_ore" else "gold_ore"
 
 
 def digest(path):
@@ -77,7 +81,7 @@ def prepare(args, name, origin, policy, managed, port, bootstrap=False):
 
     settings = (
         "level-name=world\nlevel-seed=3346071746553592696\nlevel-type=FLAT\n"
-        f"generator-settings=3;minecraft:bedrock,{239 if RESOURCE_KEY in ('coal_ore', 'diamond_ore') else 127}*minecraft:stone,minecraft:grass;1;decoration\n"
+        f"generator-settings=3;minecraft:bedrock,{239 if RESOURCE_KEY in ('coal_ore', 'diamond_ore', 'gold_ore') else 127}*minecraft:stone,minecraft:grass;{37 if getattr(args, 'mesa', False) else 1};decoration\n"
         f"server-ip=127.0.0.1\nserver-port={port}\nonline-mode=false\n"
         "generate-structures=false\nview-distance=3\nmax-tick-time=-1\nallow-nether=false\n"
         "spawn-animals=false\nspawn-monsters=false\n"
@@ -103,6 +107,13 @@ def prepare(args, name, origin, policy, managed, port, bootstrap=False):
             "beds": [2, 2], "thickness": [1, 1], "rock_interval": [2, 2],
             "maximum_dip_degrees": 0, "fold_amplitude": 0, "maximum_fault_throw": 0,
         }
+    elif RESOURCE_KEY == "gold_ore":
+        definition.update(min_y=180, max_y=215)
+        definition["shape"] = {
+            "type": "gold_lode", "veins": [2, 2], "strike_length": [64, 96],
+            "thickness": [2, 3], "surface_cover": [4, 12], "dip_degrees": [55, 85],
+            "legacy_selection_scale": 0.25,
+        }
     elif RESOURCE_KEY == "diamond_ore":
         # Separate pipe diamonds from the native/imported low-level supply.
         definition.update(min_y=180, max_y=210)
@@ -126,6 +137,11 @@ def prepare(args, name, origin, policy, managed, port, bootstrap=False):
     for default in diamonds["deposits"]:
         default["enabled"] = False
     write_json(root / "config/realisticdeposits/deposits/diamonds.json", diamonds)
+    gold = json.loads((Path(__file__).parents[2] / "src/main/resources/assets/realisticdeposits/defaults/gold.json")
+                      .read_text(encoding="utf-8"))
+    for default in gold["deposits"]:
+        default["enabled"] = False
+    write_json(root / "config/realisticdeposits/deposits/gold.json", gold)
     sources = {}
 
     if origin != "native":
@@ -153,19 +169,19 @@ def prepare(args, name, origin, policy, managed, port, bootstrap=False):
             }
             gold = copy.deepcopy(iron)
             gold["enabled"] = False
-            gold["blocks"] = [{"name": "minecraft:gold_ore", "chance": 100}]
-            write_json(source, {"version": "2.0", "spawns": {RESOURCE_KEY: iron, "gold_ore": gold}})
+            gold["blocks"] = [{"name": "minecraft:" + disabled_control_key(), "chance": 100}]
+            write_json(source, {"version": "2.0", "spawns": {RESOURCE_KEY: iron, disabled_control_key(): gold}})
 
         sources[source] = digest(source)
 
     if origin == "existing-override":
         override = root / "config/orespawn-orespawn.json"
         disabled = imported_rule()
-        disabled.update(enabled=False, block="minecraft:gold_ore")
+        disabled.update(enabled=False, block="minecraft:" + disabled_control_key())
         write_json(override, {
             "schema_version": 4, "provider_modid": "orespawn", "provider_revision": 1,
             "ores": {"orespawn:legacy/" + RESOURCE_KEY: imported_rule(),
-                     "orespawn:legacy/gold_ore": disabled},
+                     "orespawn:legacy/" + disabled_control_key(): disabled},
         })
         sources[override] = digest(override)
 
@@ -243,10 +259,10 @@ def check_profile(report, origin, policy, managed):
     default_coal = owned.pop("realisticdeposits:deposit/realisticdeposits/overworld_coal_measures", None)
     if default_coal is not None:
         assert default_coal["enabled"] is False, "The unrelated default coalfield must remain disabled"
-    for name in ("overworld_diamond_pipes", "overworld_diamond_placers"):
+    for name in ("overworld_diamond_pipes", "overworld_diamond_placers", "overworld_gold_lodes", "overworld_gold_placers"):
         default = owned.pop("realisticdeposits:deposit/realisticdeposits/" + name, None)
         if default is not None:
-            assert default["enabled"] is False, "An unrelated default diamond rule became active"
+            assert default["enabled"] is False, "An unrelated default deposit rule became active"
     assert set(owned) == {DEPOSIT_ID}, "Duplicate or missing Realistic Deposits rule"
     rule = owned[DEPOSIT_ID]
     assert rule["retrogen"] is False
@@ -263,7 +279,7 @@ def check_profile(report, origin, policy, managed):
         assert placement["frequency"] == (6.5 if origin == "existing-override" else 3.25)
 
         if origin in ("os3", "existing-override"):
-            assert profile["ores"]["orespawn:legacy/gold_ore"]["enabled"] is False
+            assert profile["ores"]["orespawn:legacy/" + disabled_control_key()]["enabled"] is False
 
 
 def check_generation(sample, origin, policy, managed):
@@ -422,7 +438,8 @@ def main():
     parser.add_argument("--jobs", type=int, default=2)
     parser.add_argument("--base-port", type=int, default=25900,
                         help="First loopback port; choose a separate range for concurrent matrices")
-    parser.add_argument("--resource", choices=("iron", "coal", "diamond"), default="iron")
+    parser.add_argument("--resource", choices=("iron", "coal", "diamond", "gold"), default="iron")
+    parser.add_argument("--mesa", action="store_true", help="Also exercise Mesa's separate gold generation")
     parser.add_argument("--only", default="", help="Run matching case names for focused diagnostics")
     parser.add_argument("--local-orespawn-sha256",
                         help="Explicit checksum for testing an unpublished local OreSpawn fix")

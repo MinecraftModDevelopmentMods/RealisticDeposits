@@ -31,7 +31,7 @@ independently. These are test settings, not new gameplay defaults.
 
 ## Coalfield checks
 
-Coalfield checks use the published OreSpawn 4.1.4.110021 dependency and its
+Coalfield checks use the published OreSpawn 4.1.5.110021 dependency and its
 official checksum. The exact-host API is included in that release; a local
 OreSpawn build is not needed.
 
@@ -111,7 +111,7 @@ Then run `python tools/qualification/qualify_110.py` with these arguments:
 | `--java` | Java 8 executable |
 | `--runtime` | An official Forge 1.10.2-12.18.3.2511 server installation, including libraries and an already accepted EULA |
 | `--mod` | The built Realistic Deposits release jar |
-| `--orespawn` | Public OreSpawn 4.1.4.110021; its official checksum is checked |
+| `--orespawn` | Public OreSpawn 4.1.5.110021; its official checksum is checked |
 | `--probe` | `build/qualification/policy-probe.jar` |
 | `--output` | A new disposable evidence directory, preferably under an ignored `run-*` folder |
 | `--jobs` | Concurrent servers; defaults to two |
@@ -174,3 +174,30 @@ workings with active strata and no cross-chunk vanilla decoration. Native
 terrain cases populate the complete mine footprint before checking reloads;
 vanilla decoration in adjacent new chunks can otherwise change unworked ground.
 CI runs the controlled cases.
+
+## Gold and the combined regression pass
+
+The packaged CI driver covers iron, coal, diamonds and gold, plus a separate
+Mesa gold policy matrix. It also runs source-disable, gravel-harvest and
+workings checks. Each policy matrix includes imports, explicit overrides,
+saved management toggles, reloads and later-generated chunks. Logged errors
+fail the driver even when a probe has written a pass marker.
+
+`ci_runtime.py --only <suite names>` selects a smaller local pass. Its optional
+`--runtime`, `--mod`, `--orespawn` and `--probe-directory` arguments reuse sealed
+inputs; the engine must still match the public pin. They do not enable a local
+engine override or change the supplied runtime. Without those options, CI
+installs the checksum-pinned official Forge server and downloads the public
+dependency itself.
+
+`gold_survey_110.py` measures six fixed seeds, reserving the last two as
+holdouts. Run lode, `--control` and `--native-sediment` passes, then combine
+their results with `gold_balance_110.py`. The report counts expected nuggets
+and ingots, includes Fortune and records uncertainty without enforcing a
+vanilla-equivalent reward target. All three passes must use the same mod,
+engine and survey probe. `--structures --reload` additionally checks a manual
+site under ordinary structure generation and after a clean restart.
+
+`gold_maps.py` draws measured lode sections or a `--placer` river section.
+Keep the generated images with the disposable evidence, not in public jars.
+The player-facing steps and fixed test locations are in [the gold walkthrough](GOLD_TESTING.md).

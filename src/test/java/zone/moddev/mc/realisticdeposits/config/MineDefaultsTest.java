@@ -16,9 +16,9 @@ class MineDefaultsTest {
 
 	@Test
 	void everyNewUndergroundDepositAttemptsWorkings() {
-		for (String name : new String[] {"vanilla", "coal", "diamonds"}) {
+		for (String name : new String[] {"vanilla", "coal", "diamonds", "gold"}) {
 			for (DepositDefinition definition : catalogue(name).definitions()) {
-				if (definition.isDiamondPlacer()) {
+					if (definition.isDiamondPlacer() || definition.isGoldPlacer()) {
 					assertFalse(definition.abandonedMine().enabled());
 				} else {
 					assertTrue(definition.abandonedMine().enabled(), definition.id());
@@ -46,7 +46,7 @@ class MineDefaultsTest {
 
 	@Test
 	void oldProfilesAndExplicitOptOutsStayOff() {
-		for (String name : new String[] {"vanilla", "coal", "diamonds"}) {
+		for (String name : new String[] {"vanilla", "coal", "diamonds", "gold"}) {
 			for (DepositDefinition definition : catalogue(name).definitions()) {
 				JsonObject legacy = definition.toJson();
 				legacy.remove("abandoned_mine");

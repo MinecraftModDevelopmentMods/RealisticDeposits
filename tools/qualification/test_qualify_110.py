@@ -5,6 +5,9 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import Mock
+from unittest.mock import patch
+
+import qualify_110
 
 from qualify_110 import (ORESPAWN_SHA256, checked_orespawn_sha256, check_generation,
                          check_legacy_flags, check_matrix, digest, same_sample)
@@ -27,6 +30,11 @@ def sample(ordinary, denied):
 
 
 class QualificationChecksTest(unittest.TestCase):
+    def test_disabled_control_cannot_overwrite_the_active_gold_import(self):
+        for resource in ("iron_ore", "coal_ore", "diamond_ore", "gold_ore"):
+            with patch.object(qualify_110, "RESOURCE_KEY", resource):
+                self.assertNotEqual(resource, qualify_110.disabled_control_key())
+
     def test_default_checksum_matches_the_build_dependency(self):
         properties = dict(line.split("=", 1) for line in
                           (Path(__file__).resolve().parents[2] / "gradle.properties").read_text().splitlines()

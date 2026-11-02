@@ -450,11 +450,11 @@ tasks.register('verifyProjectIdentity') {
         }
         if (project.minecraft_version != '1.10.2'
                 || project.forge_version != '12.18.3.2511'
-                || project.orespawn_version != '4.1.4.110021'
-                || project.orespawn_version_range != '[4.1.4.110021,5.0.0)'
-                || (!oreSpawnCandidateMode && oreSpawnCoordinate != 'curse.maven:mmd-orespawn-245586:9356289')
+                || project.orespawn_version != '4.1.5.110021'
+                || project.orespawn_version_range != '[4.1.5.110021,5.0.0)'
+                || (!oreSpawnCandidateMode && oreSpawnCoordinate != 'curse.maven:mmd-orespawn-245586:9397156')
                 || project.orespawn_sha256
-                != 'DB254E9E865685A74262DE9D469A006AB3C8053573CC6136FD4A8591AD806CA3') {
+                != '1E580EBB8D93B1256E2E81C7D0D815DEAAAC58A028CB5A77A52773B62048E010') {
             throw new GradleException('Unexpected target or OreSpawn dependency identity')
         }
         if (project.mod_version.toString().contains('-')) {
@@ -648,3 +648,4 @@ tasks.named('check') {
 apply from: 'gradle/release.gradle'
 apply from: 'gradle/coal-manual.gradle'
 apply from: 'gradle/diamond-manual.gradle'
+apply from: 'gradle/gold-manual.gradle'

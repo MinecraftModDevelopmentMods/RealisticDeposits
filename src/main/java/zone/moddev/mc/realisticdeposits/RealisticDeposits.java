@@ -6,6 +6,7 @@ import zone.moddev.mc.realisticdeposits.generation.StratiformSeamPattern;
 import zone.moddev.mc.realisticdeposits.generation.CoalMeasuresPattern;
 import zone.moddev.mc.realisticdeposits.generation.MineWorkingsGenerator;
 import zone.moddev.mc.realisticdeposits.generation.DiamondPattern;
+import zone.moddev.mc.realisticdeposits.generation.GoldPattern;
 import zone.moddev.mc.realisticdeposits.content.ModContent;
 import zone.moddev.mc.realisticdeposits.integration.OreSpawnIntegration;
 import zone.moddev.mc.realisticdeposits.proxy.CommonProxy;
@@ -32,12 +33,12 @@ import net.minecraftforge.fml.common.registry.GameRegistry;
  */
 @Mod(modid = RealisticDeposits.MOD_ID, name = RealisticDeposits.NAME,
 		version = RealisticDeposits.VERSION, acceptedMinecraftVersions = "[1.10.2]",
-		dependencies = "required-after:orespawn@[4.1.4.110021,5.0.0)",
+		dependencies = "required-after:orespawn@[4.1.5.110021,5.0.0)",
 		guiFactory = "zone.moddev.mc.realisticdeposits.client.RealisticDepositsGuiFactory")
 public final class RealisticDeposits {
 	public static final String MOD_ID = "realisticdeposits";
 	public static final String NAME = "Realistic Deposits";
-	public static final String VERSION = "0.3.0.110021";
+	public static final String VERSION = "0.4.0.110021";
 	private static final OrePatternType STRATIFORM_SEAM = StratiformSeamPattern.type()
 			.setRegistryName(OreSpawnIntegration.PATTERN_ID);
 	private static final OrePatternType COAL_MEASURES = CoalMeasuresPattern.type()
@@ -46,6 +47,10 @@ public final class RealisticDeposits {
 			.setRegistryName(OreSpawnIntegration.DIAMOND_PIPE_ID);
 	private static final OrePatternType DIAMOND_PLACER = DiamondPattern.type(true)
 			.setRegistryName(OreSpawnIntegration.DIAMOND_PLACER_ID);
+	private static final OrePatternType GOLD_LODE = GoldPattern.type(false)
+			.setRegistryName(OreSpawnIntegration.GOLD_LODE_ID);
+	private static final OrePatternType GOLD_PLACER = GoldPattern.type(true)
+			.setRegistryName(OreSpawnIntegration.GOLD_PLACER_ID);
 
 	@SidedProxy(clientSide = "zone.moddev.mc.realisticdeposits.proxy.ClientProxy",
 			serverSide = "zone.moddev.mc.realisticdeposits.proxy.CommonProxy")
@@ -62,6 +67,8 @@ public final class RealisticDeposits {
 		event.getRegistry().register(COAL_MEASURES);
 		event.getRegistry().register(DIAMOND_PIPE);
 		event.getRegistry().register(DIAMOND_PLACER);
+		event.getRegistry().register(GOLD_LODE);
+		event.getRegistry().register(GOLD_PLACER);
 	}
 
 	@Mod.EventHandler
@@ -84,6 +91,7 @@ public final class RealisticDeposits {
 	public void serverAboutToStart(FMLServerAboutToStartEvent event) {
 		CoalMeasuresPattern.newServerSession();
 		DiamondPattern.newServerSession();
+		GoldPattern.newServerSession();
 	}
 
 	@Mod.EventHandler

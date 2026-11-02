@@ -1,9 +1,11 @@
 """Complete an older saved shaft on disposable control and upgraded servers."""
 
 import argparse
+import copy
 import json
 import shutil
 import subprocess
+import zipfile
 from pathlib import Path
 
 from coal_110 import prepare
@@ -13,6 +15,17 @@ from qualify_110 import FORGE_JAR, checked_orespawn_sha256, digest, world_finger
 
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def check_saved_profile(before, after, version):
+    expected = copy.deepcopy(before)
+    for settings in expected.get("ore_source_policies", {}).values():
+        for source in settings.get("candidates", []):
+            if (source.get("owner") == "realisticdeposits"
+                    and str(source.get("source_id", "")).startswith("realisticdeposits:")
+                    and "owner_version" in source):
+                source["owner_version"] = version
+    assert after == expected, "Saved settings changed beyond this mod's displayed source version"
 
 
 def frozen_boot(java, root, phase):
@@ -57,6 +70,9 @@ def main():
         setattr(args, name, destination)
     write_json(args.output / "artifacts.json", {p.name: digest(p) for p in inputs.iterdir()})
     current = args.mod
+    with zipfile.ZipFile(current) as archive:
+        metadata = json.loads(archive.read("mcmod.info"))
+        current_version = next(mod["version"] for mod in metadata if mod["modid"] == "realisticdeposits")
     args.mod = args.old_mod
     args.probe = args.old_probe
     args.port = 48670
@@ -80,7 +96,11 @@ def main():
         (target / "server.properties").write_text(settings.replace("48670", str(48671 + index)), encoding="utf-8", newline="\n")
         profile = target / "mine-test-world/serverconfig/orespawn-worldgen.json"
         profile_hash = digest(profile)
+        original_profile = json.loads(profile.read_text())
         complete = frozen_boot(args.java, target, "complete")
+        if name == "upgraded":
+            check_saved_profile(original_profile, json.loads(profile.read_text()), current_version)
+            profile_hash = digest(profile)
         assert frozen_boot(args.java, target, "reload") == complete
         assert digest(profile) == profile_hash, "Saved profile changed"
         reports.append(complete)

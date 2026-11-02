@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[2]
 def run(java, root, phase, case):
     command = [str(java), "-Xms256m", "-Xmx2G", "-XX:ActiveProcessorCount=2",
                "-Drd.coal.enabled=true", f"-Drd.coal.phase={phase}",
-               f"-Drd.coal.workings={str(case == 'workings').lower()}",
+               f"-Drd.coal.workings={str(case in ('workings', 'workings-flat')).lower()}",
                f"-Drd.coal.survey={str(case == 'survey').lower()}",
                f"-Drd.coal.structure={str(case == 'structure').lower()}", "-jar", FORGE_JAR, "nogui"]
     with (root / f"{phase}.log").open("w", encoding="utf-8") as output:
@@ -77,7 +77,7 @@ def main():
     parser.add_argument("--mineralogy", type=Path)
     parser.add_argument("--geology-profile", type=Path, help="Read-only reference for the inactive-strata fixture")
     parser.add_argument("--local-orespawn-sha256", help="Explicit checksum for an optional unpublished test candidate")
-    parser.add_argument("--cases", nargs="+", choices=("standalone", "normal", "mineralogy", "inactive", "legacy", "workings", "structure"),
+    parser.add_argument("--cases", nargs="+", choices=("standalone", "normal", "mineralogy", "inactive", "legacy", "workings", "workings-flat", "structure"),
                         default=("standalone", "normal", "mineralogy"))
     args = parser.parse_args()
     assert not args.output.exists(), "Use a new evidence directory"
@@ -99,9 +99,17 @@ def main():
     results = []
     for case in args.cases:
         root = prepare(args, args.output / case, case in ("mineralogy", "inactive", "legacy"), case in ("normal", "workings"))
-        if case in ("workings", "structure"):
+        if case == "workings-flat":
+            # Isolate the coal entrance from lakes, decoration and other deposit workings.
+            for name in ("vanilla", "diamonds", "gold"):
+                catalogue = json.loads((ROOT / f"src/main/resources/assets/realisticdeposits/defaults/{name}.json")
+                                       .read_text(encoding="utf-8"))
+                for definition in catalogue["deposits"]:
+                    definition["enabled"] = False
+                write_json(root / f"config/realisticdeposits/deposits/{name}.json", catalogue)
+        if case in ("workings", "workings-flat", "structure"):
             coal = json.loads((ROOT / "src/main/resources/assets/realisticdeposits/defaults/coal.json").read_text(encoding="utf-8"))
-            if case == "workings":
+            if case in ("workings", "workings-flat"):
                 coal["deposits"][0]["abandoned_mine"] = {"enabled": True, "chance": 1.0}
             else:
                 coal["deposits"][0]["interaction"] = "replacement"
