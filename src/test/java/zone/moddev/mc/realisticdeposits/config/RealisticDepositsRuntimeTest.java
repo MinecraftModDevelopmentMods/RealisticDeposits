@@ -36,7 +36,7 @@ class RealisticDepositsRuntimeTest {
 		assertEquals(RuntimeState.IntegrationStatus.ACTIVE,
 				RealisticDepositsRuntime.state().integrationStatus());
 
-		write(catalog, document("minecraft:gold_ore", "additive", 0.5D));
+		write(catalog, document("minecraft:lapis_ore", "additive", 0.5D));
 		RealisticDepositsRuntime.reloadForTests();
 		assertSame(captured, handle.current());
 		assertEquals(RuntimeState.IntegrationStatus.ACTIVE_RESTART_REQUIRED,

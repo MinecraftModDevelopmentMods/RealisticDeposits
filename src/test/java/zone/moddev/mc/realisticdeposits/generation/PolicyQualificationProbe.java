@@ -39,6 +39,7 @@ import zone.moddev.mc.realisticdeposits.geometry.StratiformSeamBody;
 import zone.moddev.mc.realisticdeposits.geometry.CoalMeasuresBody;
 import zone.moddev.mc.realisticdeposits.geometry.MineableDepositBody;
 import zone.moddev.mc.realisticdeposits.geometry.DiamondDistrict;
+import zone.moddev.mc.realisticdeposits.geometry.GoldDistrict;
 import zone.moddev.mc.realisticdeposits.model.DepositDefinition;
 
 /** Packaged-server qualification fixture, excluded from the public mod jars. */
@@ -60,7 +61,8 @@ public final class PolicyQualificationProbe {
 
     @SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
     public void observeIron(OreGenEvent.GenerateMinable event) {
-        OreGenEvent.GenerateMinable.EventType observed = diamond() ? OreGenEvent.GenerateMinable.EventType.DIAMOND
+        OreGenEvent.GenerateMinable.EventType observed = gold() ? OreGenEvent.GenerateMinable.EventType.GOLD
+                : diamond() ? OreGenEvent.GenerateMinable.EventType.DIAMOND
                 : coal() ? OreGenEvent.GenerateMinable.EventType.COAL : OreGenEvent.GenerateMinable.EventType.IRON;
         if (event.getType() != observed) {
             return;
@@ -241,7 +243,8 @@ public final class PolicyQualificationProbe {
         int min = base * 16;
         int max = (base + SAMPLE_SIDE) * 16 - 1;
         int spacing = definition.regionSpacingChunks() * 16;
-        int radius = definition.isCoal()
+        int radius = definition.isGoldLode() ? definition.lode().strikeLength().maximum() / 2 + 96
+                : definition.isCoal()
                 ? (definition.coal().strikeLength().maximum() + definition.coal().downDipWidth().maximum()) / 2 + 3
                 : (int) Math.ceil(definition.seam().strikeLength().maximum() * 0.5
                         + definition.seam().downDipWidth().maximum() * 0.5 + definition.seam().bendAmplitude() + 13.0);
@@ -249,7 +252,12 @@ public final class PolicyQualificationProbe {
 
         for (int rx = Math.floorDiv(min - radius, spacing); rx <= Math.floorDiv(max + radius, spacing); rx++) {
             for (int rz = Math.floorDiv(min - radius, spacing); rz <= Math.floorDiv(max + radius, spacing); rz++) {
-                MineableDepositBody body = definition.isCoal()
+                MineableDepositBody body = definition.isGoldLode()
+                        ? GoldDistrict.plan(definition, worldSeed, "minecraft:overworld", rx, rz, new GoldDistrict.Site() {
+                            @Override public int surfaceY(int x, int z) { return 241; }
+                            @Override public String geome(int x, int z, int surface) { return null; }
+                        }).orElse(null)
+                        : definition.isCoal()
                         ? CoalMeasuresBody.plan(definition, worldSeed, "minecraft:overworld", rx, rz).orElse(null)
                         : RegionDepositPlanner.plan(definition, worldSeed, "minecraft:overworld", rx, rz).orElse(null);
 
@@ -278,7 +286,9 @@ public final class PolicyQualificationProbe {
 
     private static boolean diamond() { return "diamond".equals(System.getProperty("rd.qualification.resource")); }
 
-    private static Block resource() { return diamond() ? Blocks.DIAMOND_ORE : coal() ? Blocks.COAL_ORE : Blocks.IRON_ORE; }
+    private static boolean gold() { return "gold".equals(System.getProperty("rd.qualification.resource")); }
+
+    private static Block resource() { return gold() ? Blocks.GOLD_ORE : diamond() ? Blocks.DIAMOND_ORE : coal() ? Blocks.COAL_ORE : Blocks.IRON_ORE; }
 
     private static Set<Long> diamondPositions(DepositDefinition definition, long seed, int base) {
         Set<Long> positions = new HashSet<>();

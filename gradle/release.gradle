@@ -13,7 +13,7 @@ tasks.register('verifyPublicationAllowed') {
     group = 'verification'
     doLast {
         if (project.oreSpawnCandidateMode) {
-            throw new GradleException('Local OreSpawn candidates cannot be published. Pin a separately released exact-host API first.')
+            throw new GradleException('Local OreSpawn candidates cannot be published. Pin a public OreSpawn release first.')
         }
     }
 }
@@ -81,7 +81,7 @@ tasks.register('verifyJavadocOrdering') {
 tasks.register('verifyReleaseConfiguration') {
     group = 'verification'
     doLast {
-        if (project.mod_version != '0.3.0.110021'
+        if (project.mod_version != '0.4.0.110021'
                 || project.curseforge_project_id != '1689703'
                 || project.mod_artifact != 'RealisticDeposits'
                 || project.java_version != '8' || project.gradle_java_version != '17'

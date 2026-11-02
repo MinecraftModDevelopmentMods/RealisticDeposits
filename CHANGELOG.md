@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.4.0.110021
+
+Beta for Minecraft 1.10.2.
+
+- Add steep gold veins with branches, pinching sections and richer ore shoots.
+  Keep 15% ordinary background gold and leave existing iron, coal and diamond
+  layouts unchanged.
+- Use suitable existing rocks when Mineralogy strata are active, or natural
+  vanilla stone otherwise. Add no quartz carrier rock or terrain replacement.
+- Add linked river pockets of gold-bearing gravel. Mining leaves spent gravel
+  and has a one-in-four nugget chance, with Fortune increasing successful drops.
+  Silk Touch and falling preserve the rich block.
+- Attempt safe gradual workings at goldfields. Leave river placers untouched
+  and preserve previously saved mine plans.
+- Keep gold settings in their own catalogue. Existing world profiles and
+  terrain do not gain gold rules or lose background gold automatically.
+- Add gold previews and separate packaged-server and manual-testing profiles.
+- Require OreSpawn 4.1.5.110021 so Mesa's extra gold follows the same background
+  controls as ordinary gold, without changing saved settings or existing chunks.
+
 ## 0.3.0.110021
 
 Beta for Minecraft 1.10.2.

@@ -102,6 +102,10 @@ def main():
             if "abandoned_mine" in definition:
                 definition["abandoned_mine"]["enabled"] = False
         write_json(root / "config/realisticdeposits/deposits/diamonds.json", diamonds)
+        gold = json.loads((ROOT / "src/main/resources/assets/realisticdeposits/defaults/gold.json").read_text())
+        for definition in gold["deposits"]:
+            definition["enabled"] = False
+        write_json(root / "config/realisticdeposits/deposits/gold.json", gold)
         if case == "flat":
             phases = ["first", "complete", "reload"]
         elif normal:

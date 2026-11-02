@@ -6,16 +6,16 @@
 ![Realistic Deposits logo](src/main/resources/assets/realisticdeposits/textures/logo.png)
 
 Realistic Deposits makes finding ore a reason to explore, then build a proper
-mine. Rare iron districts, layered coalfields and diamond pipes give you
-deposits worth returning to, with old workings leading into some of them.
-Small pockets of diamond-bearing river gravel offer another way to prospect.
+mine. Rare iron districts, layered coalfields, diamond pipes and gold veins
+give you deposits worth returning to, with old workings leading into some of them.
+Small pockets of diamond- and gold-bearing river gravel offer another way to prospect.
 It runs on [MMD OreSpawn](https://github.com/MinecraftModDevelopmentMods/OreSpawn).
 
 The project starts with Minecraft 1.10.2 and is intended to follow the
 maintained OreSpawn branches across Forge and NeoForge.
 
-Version 0.3.0.110021 is a beta for Minecraft 1.10.2. It adds diamond deposits
-and replaces deep ladder shafts in new workings with stepped entrances.
+Version 0.4.0.110021 is a beta for Minecraft 1.10.2. It adds gold
+veins and linked river placers to the existing deposits and stepped workings.
 Existing worlds keep their settings and saved mine layouts. Back up important
 worlds before updating.
 
@@ -37,15 +37,17 @@ worlds before updating.
   ordinary ore generation.
 - Rare diamond pipes and linked river placers, without adding new host rocks
   or reshaping rivers. See [diamond deposits](docs/DIAMONDS.md).
+- Steep gold veins with rich shoots, lean stretches and linked river gravel.
+  See [gold deposits](docs/GOLD.md).
 - Configurable support for vanilla and modded resources.
 - Safe generation that avoids air, fluids, bedrock, block entities, structures,
   and undeclared host blocks.
-- Live reload for iron and coal geometry. Diamond geometry and other structural
+- Live reload for iron and coal geometry. Gold, diamond and other structural
   changes wait until restart.
 - An entry in both Forge's Mods configuration and OreSpawn's World Settings.
 - Abandoned workings with sloping, stepped entrances and short underground galleries.
-  New defaults attempt them at every iron formation, coalfield and diamond
-  pipe where safe. River placers stay untouched. See the [mine settings](docs/ABANDONED_MINES.md).
+  New defaults attempt them at every iron formation, coalfield, diamond pipe
+  and goldfield where safe. River placers stay untouched. See the [mine settings](docs/ABANDONED_MINES.md).
 
 Coalfields can already use Mineralogy's existing shale, siltstone and
 conglomerate. Wider catalogues for Mineralogy, Base Metals, Modern Metals,
@@ -57,7 +59,7 @@ The current branch requires:
 
 - Minecraft 1.10.2;
 - Forge 12.18.3.2511 or a compatible newer Forge 12 build;
-- [MMD OreSpawn 4.1.4.110021](https://www.curseforge.com/minecraft/mc-mods/mmd-orespawn/files/9356289)
+- [MMD OreSpawn 4.1.5.110021](https://www.curseforge.com/minecraft/mc-mods/mmd-orespawn/files/9397156)
   or a newer compatible 1.10.2 release, but earlier than OreSpawn 5;
 - Java 8 to run Minecraft.
 
@@ -73,6 +75,7 @@ The first launch creates:
 config/realisticdeposits/deposits/vanilla.json
 config/realisticdeposits/deposits/coal.json
 config/realisticdeposits/deposits/diamonds.json
+config/realisticdeposits/deposits/gold.json
 ```
 
 The supplied definition describes one rare iron district using a 640–960 block
@@ -90,6 +93,13 @@ while allowing sedimentary cover in some other geological regions. Coalfields
 use plain stone without physical strata, or suitable existing sedimentary
 rocks when those strata are active. Old catalogues are never overwritten, and
 old worlds do not receive new coal rules automatically.
+
+Goldfields add narrow, steep veins with richer pockets rather than walls of
+solid ore. Nearby river sediments can contain gold-bearing gravel: mining it
+leaves spent gravel and has a one-in-four chance of a gold nugget. Fortune
+increases successful drops. The gold catalogue keeps 15% ordinary background
+gold; the larger deposits are deliberately unevenly distributed. Their total
+reward is not forced to match vanilla.
 
 Deposits only affect newly generated chunks. Changing these settings does not
 retrogen, replace, or rewrite an existing chunk.
@@ -136,7 +146,7 @@ formations:
 
 `reload` requires operator permission. For iron and coal it applies `enabled`,
 selection, shape, height, geome, family, and alignment changes. Diamond geometry
-and source links require a restart. Resource,
+and source links require a restart, as do gold settings. Resource,
 dimension, host, biome-filter, interaction-policy, scale, added, and removed
 definition changes are structural and take effect after restart. Abandoned-mine
 settings are also captured with the world's deposit definition. New provider
@@ -151,9 +161,9 @@ World Settings screen.
 The Gradle build runs on Java 17 and compiles the mod for Java 8 using the
 configured toolchain. ForgeGradle's Minecraft preparation utility uses Java 25.
 
-OreSpawn 4.1.4.110021 is downloaded from Curse Maven, checked against its
+OreSpawn 4.1.5.110021 is downloaded from Curse Maven, checked against its
 official checksum and mapped for development automatically. The exact dependency
-is `curse.maven:mmd-orespawn-245586:9356289`. No sibling checkout, local jar or
+is `curse.maven:mmd-orespawn-245586:9397156`. No sibling checkout, local jar or
 `local.properties` file is needed.
 
 An optional local-candidate override is still available for development, but it

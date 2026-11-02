@@ -52,7 +52,7 @@ def main():
         parser.add_argument("--" + name, required=True, type=Path)
     parser.add_argument("--local-orespawn-sha256", help="Explicit checksum for an optional unpublished test candidate")
     parser.add_argument("--old-mod-sha256", help="Exact checksum of a different, explicitly selected old release")
-    parser.add_argument("--new-rules", choices=("coal", "diamond"), default="coal")
+    parser.add_argument("--new-rules", choices=("coal", "diamond", "gold"), default="coal")
     parser.add_argument("--mineralogy", type=Path)
     parser.add_argument("--legacy-profile", type=Path,
                         help="Read-only geology reference for a separate legacy-coal-layer comparison")
@@ -111,7 +111,8 @@ def main():
         profile = json.loads((target / profile_relative).read_text(encoding="utf-8"))
         assert captured_settings(profile) == captured_settings(original_profile), "World settings were changed"
         assert digest(target / "config/realisticdeposits/deposits/vanilla.json") == original_config
-        new_rule = "overworld_diamond_" if args.new_rules == "diamond" else "overworld_coal_measures"
+        new_rule = {"diamond": "overworld_diamond_", "gold": "overworld_gold_",
+                    "coal": "overworld_coal_measures"}[args.new_rules]
         assert not any(new_rule in key for key in profile["ores"]), "New rules were injected into an old world"
         completed[name] = report
     assert completed["control"] == completed["upgraded"], "The update changed later-generated terrain or coal supply"

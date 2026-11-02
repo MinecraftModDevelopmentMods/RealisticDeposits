@@ -17,9 +17,10 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 public final class ClientProxy extends CommonProxy {
 	@Override
 	public void registerClientModels() {
-		Block block = ModContent.DIAMOND_GRAVEL;
-		ModelLoader.setCustomModelResourceLocation(Item.getItemFromBlock(block), 0,
-				new ModelResourceLocation(block.getRegistryName(), "inventory"));
+		for (Block block : new Block[] {ModContent.DIAMOND_GRAVEL, ModContent.GOLD_GRAVEL}) {
+			ModelLoader.setCustomModelResourceLocation(Item.getItemFromBlock(block), 0,
+					new ModelResourceLocation(block.getRegistryName(), "inventory"));
+		}
 	}
 
 	@Override

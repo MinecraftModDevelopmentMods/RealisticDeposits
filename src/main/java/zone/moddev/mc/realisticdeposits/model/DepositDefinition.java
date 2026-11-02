@@ -113,11 +113,14 @@ public final class DepositDefinition {
 		this.salt = salt;
 		this.shape = Objects.requireNonNull(seam, "shape");
 		this.abandonedMine = Objects.requireNonNull(abandonedMine, "abandonedMine");
-		if (isDiamondPlacer() && abandonedMine.enabled()) {
+		if ((isDiamondPlacer() || isGoldPlacer()) && abandonedMine.enabled()) {
 			throw new IllegalArgumentException("River placers do not support underground workings: " + id);
 		}
 		if (isDiamondPlacer() && interaction != InteractionPolicy.ADDITIVE) {
 			throw new IllegalArgumentException("The source pipe, not its placer, controls background diamonds: " + id);
+		}
+		if (isGoldPlacer() && interaction != InteractionPolicy.ADDITIVE) {
+			throw new IllegalArgumentException("The source lode, not its placer, controls background gold: " + id);
 		}
 		if (alignment == AlignmentMode.MASSIVE_RARE
 				&& (!this.geomes.isEmpty() || !this.rockFamilies.isEmpty())) {
@@ -176,6 +179,11 @@ public final class DepositDefinition {
 	public boolean isDiamondPipe() { return shape instanceof DiamondPipeSettings; }
 	public boolean isDiamondPlacer() { return shape instanceof DiamondPlacerSettings; }
 	public boolean isDiamond() { return isDiamondPipe() || isDiamondPlacer(); }
+	public boolean isGoldLode() { return shape instanceof GoldLodeSettings; }
+	public boolean isGoldPlacer() { return shape instanceof GoldPlacerSettings; }
+	public boolean isGold() { return isGoldLode() || isGoldPlacer(); }
+	public GoldLodeSettings lode() { return (GoldLodeSettings) shape; }
+	public GoldPlacerSettings goldPlacer() { return (GoldPlacerSettings) shape; }
 	public DiamondPipeSettings pipe() { return (DiamondPipeSettings) shape; }
 	public DiamondPlacerSettings placer() { return (DiamondPlacerSettings) shape; }
 	public StratiformSeamSettings seam() { return (StratiformSeamSettings) shape; }
@@ -195,7 +203,8 @@ public final class DepositDefinition {
 						? effectiveBackgroundGenerationScale().getAsDouble() : "additive")
 				+ (abandonedMine.enabled() ? "|abandoned_mine:" + abandonedMine.chance() : "")
 				+ (isCoal() ? "|shape:coal_measures" : "")
-				+ (isDiamond() ? "|diamond:" + toJson() : "");
+				+ (isDiamond() ? "|diamond:" + toJson() : "")
+				+ (isGold() ? "|gold:" + toJson() : "");
 	}
 
 	/** Deterministic schema-1 representation embedded in OreSpawn pattern settings. */

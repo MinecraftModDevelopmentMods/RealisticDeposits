@@ -1,0 +1,42 @@
+// Gold testing has its own settings and saves, away from ordinary development.
+tasks.named('isolateEclipseProductionRuns') {
+    doLast {
+        [['runClient.launch', 'runGoldDepositsClient.launch'],
+         ['runServer.launch', 'runGoldDepositsServer.launch']].each { pair ->
+            String contents = file(pair[0]).getText('UTF-8')
+            contents = contents.replaceAll(
+                    /(<stringAttribute key="org\.eclipse\.jdt\.launching\.WORKING_DIRECTORY" value=")[^"]*("\/>)/,
+                    '$1' + file('run-gold-deposits').absolutePath.replace('\\', '\\\\') + '$2')
+            file(pair[1]).setText(contents.replace('\r\n', '\n'), 'UTF-8')
+        }
+    }
+}
+
+tasks.named('verifyEclipseProductionClasspath') {
+    doLast {
+        ['runGoldDepositsClient.launch', 'runGoldDepositsServer.launch'].each { name ->
+            String contents = file(name).getText('UTF-8').replace('\\', '/')
+            if (!contents.contains('run-gold-deposits') || !contents.contains('ATTR_EXCLUDE_TEST_CODE')) {
+                throw new GradleException("Gold launch is not isolated: ${name}")
+            }
+        }
+    }
+}
+
+tasks.register('prepareGoldDepositsManual') {
+    group = 'verification'
+    description = 'Prepares separate gold-testing settings and Eclipse launches.'
+    dependsOn tasks.named('verifyEclipseProductionClasspath')
+    doLast {
+        ['vanilla', 'coal', 'diamonds', 'gold'].each { name ->
+            File target = file("run-gold-deposits/config/realisticdeposits/deposits/${name}.json")
+            if (!target.isFile()) {
+                target.parentFile.mkdirs()
+                target.setText(file("src/main/resources/assets/realisticdeposits/defaults/${name}.json")
+                        .getText('UTF-8').replace('\r\n', '\n'), 'UTF-8')
+            }
+        }
+        logger.lifecycle('Use runGoldDepositsClient.launch and tools/qualification/GOLD_TESTING.md.')
+        logger.lifecycle('Existing settings and saves were left alone. Create a fresh test world.')
+    }
+}

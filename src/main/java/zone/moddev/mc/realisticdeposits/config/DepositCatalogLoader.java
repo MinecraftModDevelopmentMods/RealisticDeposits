@@ -22,6 +22,8 @@ import zone.moddev.mc.realisticdeposits.model.DepositShapeSettings;
 import zone.moddev.mc.realisticdeposits.model.CoalMeasuresSettings;
 import zone.moddev.mc.realisticdeposits.model.DiamondPipeSettings;
 import zone.moddev.mc.realisticdeposits.model.DiamondPlacerSettings;
+import zone.moddev.mc.realisticdeposits.model.GoldLodeSettings;
+import zone.moddev.mc.realisticdeposits.model.GoldPlacerSettings;
 import zone.moddev.mc.realisticdeposits.model.IntRange;
 import zone.moddev.mc.realisticdeposits.model.InteractionPolicy;
 import zone.moddev.mc.realisticdeposits.model.StratiformSeamSettings;
@@ -111,6 +113,24 @@ public final class DepositCatalogLoader {
 
 	private static DepositShapeSettings shape(JsonObject shape, String path, List<String> warnings) {
 		String type = string(shape, "type", path + " shape");
+		if ("gold_lode".equals(type)) {
+			unknownKeys(shape, keys("type", "veins", "strike_length", "thickness", "surface_cover",
+					"dip_degrees", "legacy_selection_scale"), path + " shape", warnings);
+			double[] dip = doubleRange(shape, "dip_degrees", path);
+			return new GoldLodeSettings(integerRange(shape, "veins", path),
+					integerRange(shape, "strike_length", path), integerRange(shape, "thickness", path),
+					integerRange(shape, "surface_cover", path), dip[0], dip[1],
+					number(shape, "legacy_selection_scale", path));
+		}
+
+		if ("gold_placer".equals(type)) {
+			unknownKeys(shape, keys("type", "source_deposit", "maximum_source_distance", "thickness",
+					"coverage"), path + " shape", warnings);
+			return new GoldPlacerSettings(string(shape, "source_deposit", path),
+					integer(shape, "maximum_source_distance", path), integerRange(shape, "thickness", path),
+					number(shape, "coverage", path));
+		}
+
 		if ("diamond_pipe".equals(type)) {
 			unknownKeys(shape, keys("type", "pipes", "upper_diameter", "root_y", "surface_cover",
 					"district_radius", "ore_density", "legacy_selection_scale"), path + " shape", warnings);

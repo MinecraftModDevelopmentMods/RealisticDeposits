@@ -1,5 +1,55 @@
 gradle.afterProject { project, state ->
     if (project == project.rootProject && state.failure == null) {
+        def goldInput = project.tasks.register('goldQualificationProbeInput', Jar) {
+            dependsOn project.tasks.named('testClasses')
+            from project.sourceSets.test.output.classesDirs
+            include 'zone/moddev/mc/realisticdeposits/generation/GoldRuntimeProbe*.class'
+            include 'zone/moddev/mc/realisticdeposits/generation/GoldGravelRuntimeChecks*.class'
+            archiveFileName = 'gold-probe-deobf.jar'
+            destinationDirectory = project.layout.buildDirectory.dir('qualification')
+        }
+        def goldPackaged = project.renamer.classes(goldInput) {
+            map.from project.minecraft.dependency.toSrgFile
+            output = project.layout.buildDirectory.file('qualification/gold-probe.jar')
+        }
+        project.tasks.register('prepareGoldQualification') {
+            group = 'verification'
+            description = 'Builds the isolated gold deposit server probe.'
+            dependsOn goldPackaged
+        }
+        def goldSurveyInput = project.tasks.register('goldSurveyProbeInput', Jar) {
+            dependsOn project.tasks.named('testClasses')
+            from project.sourceSets.test.output.classesDirs
+            include 'zone/moddev/mc/realisticdeposits/generation/GoldSurveyProbe*.class'
+            archiveFileName = 'gold-survey-deobf.jar'
+            destinationDirectory = project.layout.buildDirectory.dir('qualification')
+        }
+        def goldSurveyPackaged = project.renamer.classes(goldSurveyInput) {
+            map.from project.minecraft.dependency.toSrgFile
+            output = project.layout.buildDirectory.file('qualification/gold-survey.jar')
+        }
+        project.tasks.register('prepareGoldSurvey') {
+            group = 'verification'
+            description = 'Builds the isolated gold reserve and river survey.'
+            dependsOn goldSurveyPackaged
+        }
+        def goldClientInput = project.tasks.register('goldClientProbeInput', Jar) {
+            dependsOn project.tasks.named('testClasses')
+            from project.sourceSets.test.output.classesDirs
+            include 'zone/moddev/mc/realisticdeposits/client/GoldClientProbe*.class'
+            archiveFileName = 'gold-client-deobf.jar'
+            destinationDirectory = project.layout.buildDirectory.dir('qualification')
+        }
+        def goldClientPackaged = project.renamer.classes(goldClientInput) {
+            map.from project.minecraft.dependency.toSrgFile
+            output = project.layout.buildDirectory.file('qualification/gold-client.jar')
+        }
+        project.tasks.register('prepareGoldClient') {
+            group = 'verification'
+            description = 'Builds the isolated gold gravel client checks.'
+            dependsOn goldClientPackaged
+        }
+
         def surveyInput = project.tasks.register('diamondSurveyProbeInput', Jar) {
             dependsOn project.tasks.named('testClasses')
             from project.sourceSets.test.output.classesDirs
@@ -93,6 +143,7 @@ gradle.afterProject { project, state ->
             from project.sourceSets.test.output.classesDirs
             include 'zone/moddev/mc/realisticdeposits/generation/MineWorkingsRuntimeProbe*.class'
             include 'zone/moddev/mc/realisticdeposits/generation/PipeWorkingsRuntimeChecks*.class'
+            include 'zone/moddev/mc/realisticdeposits/generation/GoldWorkingsRuntimeChecks*.class'
             archiveFileName = 'mine-probe-deobf.jar'
             destinationDirectory = project.layout.buildDirectory.dir('qualification')
         }
