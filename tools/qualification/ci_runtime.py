@@ -1,8 +1,9 @@
-"""Prepare an official Forge server and run the packaged policy matrix."""
+"""Run local-only packaged qualification with an official Forge server."""
 
 import argparse
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -13,6 +14,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 INSTALLER_HASH = "664393C5A924B8F06CFB953903ABCF9FE5E99ECBE6AF8C7EA217339C766E519C"
 FORGE_HASH = "809C2EA5B4D4F3E5A294D3A326744F20FEC412A1263E708297D00F512E377542"
+
+
+def require_local_execution(environment):
+    if any(environment.get(name, "").lower() in ("true", "1")
+           for name in ("CI", "GITHUB_ACTIONS")):
+        raise RuntimeError("Packaged Minecraft qualification is local-only; "
+                           "hosted CI/CD must use lightweight checks")
 
 
 def download(url, target, expected):
@@ -73,6 +81,7 @@ def check_runtime_log(text):
 
 
 def main():
+    require_local_execution(os.environ)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--java", required=True, type=Path)
     parser.add_argument("--output", type=Path, default=ROOT / "build/qualification/packaged")

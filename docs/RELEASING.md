@@ -33,7 +33,13 @@ Do not upload a second file because the first is awaiting moderation. If a
 job fails after an upload, check its receipt and public destination before
 retrying. Published versions and tags must never be replaced with new bytes.
 
-Before merging a release, check the README and changelog, repository hygiene,
-unit tests, packaged policy/import tests, reloads and later-generated chunks.
-Back up important worlds and keep the visual gameplay check separate from
-automated test results.
+Hosted CI/CD must stay lightweight: builds, unit/helper tests, static checks,
+dependency/artifact guards and reproducibility. It must not launch Minecraft
+servers, gameplay tests, surveys or policy matrices.
+
+Before merging a release, check the README and changelog, repository hygiene
+and unit tests. Run packaged policy/import tests, reloads and later-generated
+chunks locally, retaining results and exact mod/dependency hashes. Reuse that
+runtime evidence for workflow/docs-only changes only when all three release
+jars and the public dependency are byte-identical. Back up important worlds
+and keep the visual gameplay check separate from automated test results.
