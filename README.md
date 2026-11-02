@@ -184,15 +184,17 @@ For a separate test world, use `runMajorIronClient.launch`. It keeps its saves
 and configuration in `run-major-iron`, apart from the ordinary client launch.
 
 The [generation qualification guide](tools/qualification/README.md) describes
-the optional packaged-server checks for policies, imports and saved worlds.
+the optional local-only packaged-server checks for policies, imports and saved
+worlds.
 The [mine-testing walkthrough](tools/qualification/MINES_TESTING.md) uses a
 separate Eclipse profile and disposable saves for the new workings.
 For coalfields, use `prepareCoalMeasuresManual` and the
 [coal-testing walkthrough](tools/qualification/COAL_TESTING.md).
 
-CI also checks reproducible jars, dependency hashes and ordinary Eclipse
-launches. The [release guide](docs/RELEASING.md) explains the manual release
-action and its publication checks.
+Hosted CI/CD keeps to builds, unit/helper tests, static checks, reproducible
+jars, dependency hashes and ordinary Eclipse launch definitions. It does not
+run Minecraft servers or gameplay suites. The [release guide](docs/RELEASING.md)
+explains the manual release action and its publication checks.
 
 Bug reports and feature ideas are welcome through the
 [issue tracker](https://github.com/MinecraftModDevelopmentMods/RealisticDeposits/issues).

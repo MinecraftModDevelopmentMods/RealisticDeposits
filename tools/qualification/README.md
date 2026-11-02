@@ -1,7 +1,9 @@
 # Forge 1.10.2 generation qualification
 
-This opt-in check runs the packaged mod on disposable dedicated servers. It
-does not open the ordinary development saves or run during a normal build.
+This local-only, opt-in check runs the packaged mod on disposable dedicated
+servers. It does not open the ordinary development saves or run during a normal
+build. Hosted CI/CD runs only builds, unit/helper tests and static/artifact
+checks; it must not launch these Minecraft suites.
 
 The matrix covers additive, default 25% hybrid, shipped 15% hybrid and
 replacement policies, each with Manage Vanilla Ores off and on. Each policy
@@ -153,10 +155,10 @@ custom channel. Hybrid and replacement limits then missed that ordinary ore.
 The regression checks require 4.1.3 to reduce imported ordinary generation
 while preserving explicit custom channels, saved settings and old terrain.
 
-CI prepares an official Forge server from a checksum-pinned installer and
-runs the complete 32-case fresh/reload/later-chunk matrix. Failures retain
-their logs and result reports as workflow artifacts. The optional local
-upgrade suite also checks disposable copies of worlds made before the fix.
+Local qualification uses an official Forge server from a checksum-pinned
+installer and runs the complete 32-case fresh/reload/later-chunk matrix.
+Retain failed logs, result reports and disposable worlds locally. The upgrade
+suite also checks disposable copies of worlds made before the fix.
 
 ## Diamond-pipe workings
 
@@ -173,22 +175,34 @@ target's compatible jar through `--mineralogy`. `mineralogy-flat` checks partial
 workings with active strata and no cross-chunk vanilla decoration. Native
 terrain cases populate the complete mine footprint before checking reloads;
 vanilla decoration in adjacent new chunks can otherwise change unworked ground.
-CI runs the controlled cases.
+The combined local pass runs the controlled cases.
 
 ## Gold and the combined regression pass
 
-The packaged CI driver covers iron, coal, diamonds and gold, plus a separate
+The combined local driver covers iron, coal, diamonds and gold, plus a separate
 Mesa gold policy matrix. It also runs source-disable, gravel-harvest and
 workings checks. Each policy matrix includes imports, explicit overrides,
 saved management toggles, reloads and later-generated chunks. Logged errors
 fail the driver even when a probe has written a pass marker.
 
-`ci_runtime.py --only <suite names>` selects a smaller local pass. Its optional
+The historical filename `ci_runtime.py` is retained for existing local commands;
+the driver refuses execution when `CI` or `GITHUB_ACTIONS` is true. Prepare its
+isolated probes locally first:
+
+```powershell
+.\gradlew.bat preparePolicyQualification prepareCoalQualification prepareDiamondQualification prepareGoldQualification prepareMineQualification --init-script tools/qualification/probes.init.gradle
+```
+
+Then run `python tools/qualification/ci_runtime.py --java <Java-8-executable>`
+with a fresh evidence directory through `--output`. Supply `--only <suite names>`
+for a smaller local pass. Its optional
 `--runtime`, `--mod`, `--orespawn` and `--probe-directory` arguments reuse sealed
 inputs; the engine must still match the public pin. They do not enable a local
-engine override or change the supplied runtime. Without those options, CI
-installs the checksum-pinned official Forge server and downloads the public
-dependency itself.
+engine override or change the supplied runtime. Without those options, the
+local driver installs the checksum-pinned official Forge server and downloads
+the public dependency itself. Keep the candidate and dependency hashes with
+the local results. A workflow/docs-only change does not invalidate exact-jar
+runtime evidence when all three release jars and dependency remain identical.
 
 `gold_survey_110.py` measures six fixed seeds, reserving the last two as
 holdouts. Run lode, `--control` and `--native-sediment` passes, then combine
