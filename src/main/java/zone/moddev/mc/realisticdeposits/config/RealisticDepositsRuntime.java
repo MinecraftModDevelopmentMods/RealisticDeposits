@@ -80,6 +80,7 @@ public final class RealisticDepositsRuntime {
 		createDefault(new File(deposits, "coal.json"), "/assets/realisticdeposits/defaults/coal.json");
 		createDefault(new File(deposits, "diamonds.json"), "/assets/realisticdeposits/defaults/diamonds.json");
 		createDefault(new File(deposits, "gold.json"), "/assets/realisticdeposits/defaults/gold.json");
+		createDefault(new File(deposits, "lapis.json"), "/assets/realisticdeposits/defaults/lapis.json");
 		List<File> files = jsonFiles(deposits);
 		List<DepositCatalog> catalogs = new ArrayList<>();
 		List<DepositDefinition> definitions = new ArrayList<>();
@@ -254,7 +255,8 @@ public final class RealisticDepositsRuntime {
 		List<File> result = new ArrayList<>();
 		collectJson(directory, result);
 		// Keep existing catalogue order; the new default must not become the first deposit.
-		result.sort(Comparator.comparingInt((File file) -> "gold.json".equals(file.getName()) ? 3
+		result.sort(Comparator.comparingInt((File file) -> "lapis.json".equals(file.getName()) ? 4
+				: "gold.json".equals(file.getName()) ? 3
 				: "diamonds.json".equals(file.getName()) ? 2
 				: "coal.json".equals(file.getName()) ? 1 : 0)
 				.thenComparing(File::getPath));

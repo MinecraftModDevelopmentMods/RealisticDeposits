@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.5.0.110021
+
+Alpha for Minecraft 1.10.2.
+
+- Add compact lapis lenses with pinching edges and connected richer pockets.
+  Keep 15% ordinary background lapis, with native drops and Fortune behaviour.
+- Fit lenses into natural marble when Mineralogy strata are active. Use natural
+  vanilla stone variants otherwise, without adding rocks or replacing terrain.
+- Attempt gradual entrances and short workings at suitable lapis districts,
+  leaving most of the deposit available to mine.
+- Keep lapis settings in a separate catalogue. Existing worlds retain their
+  captured rules, background supply and saved workings; no retrogen is added.
+- Add lapis previews, an isolated testing launch and packaged generation checks.
+
 ## 0.4.0.110021
 
 Beta for Minecraft 1.10.2.

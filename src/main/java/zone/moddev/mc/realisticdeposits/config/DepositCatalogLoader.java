@@ -24,6 +24,7 @@ import zone.moddev.mc.realisticdeposits.model.DiamondPipeSettings;
 import zone.moddev.mc.realisticdeposits.model.DiamondPlacerSettings;
 import zone.moddev.mc.realisticdeposits.model.GoldLodeSettings;
 import zone.moddev.mc.realisticdeposits.model.GoldPlacerSettings;
+import zone.moddev.mc.realisticdeposits.model.LapisLensSettings;
 import zone.moddev.mc.realisticdeposits.model.IntRange;
 import zone.moddev.mc.realisticdeposits.model.InteractionPolicy;
 import zone.moddev.mc.realisticdeposits.model.StratiformSeamSettings;
@@ -113,6 +114,16 @@ public final class DepositCatalogLoader {
 
 	private static DepositShapeSettings shape(JsonObject shape, String path, List<String> warnings) {
 		String type = string(shape, "type", path + " shape");
+		if ("lapis_lens".equals(type)) {
+			unknownKeys(shape, keys("type", "lenses", "strike_length", "width", "thickness",
+					"surface_cover", "legacy_selection_scale"), path + " shape", warnings);
+
+			return new LapisLensSettings(integerRange(shape, "lenses", path),
+					integerRange(shape, "strike_length", path), integerRange(shape, "width", path),
+					integerRange(shape, "thickness", path), integerRange(shape, "surface_cover", path),
+					number(shape, "legacy_selection_scale", path));
+		}
+
 		if ("gold_lode".equals(type)) {
 			unknownKeys(shape, keys("type", "veins", "strike_length", "thickness", "surface_cover",
 					"dip_degrees", "legacy_selection_scale"), path + " shape", warnings);

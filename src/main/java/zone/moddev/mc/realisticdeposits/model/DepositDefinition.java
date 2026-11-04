@@ -182,6 +182,8 @@ public final class DepositDefinition {
 	public boolean isGoldLode() { return shape instanceof GoldLodeSettings; }
 	public boolean isGoldPlacer() { return shape instanceof GoldPlacerSettings; }
 	public boolean isGold() { return isGoldLode() || isGoldPlacer(); }
+	public boolean isLapis() { return shape instanceof LapisLensSettings; }
+	public LapisLensSettings lapis() { return (LapisLensSettings) shape; }
 	public GoldLodeSettings lode() { return (GoldLodeSettings) shape; }
 	public GoldPlacerSettings goldPlacer() { return (GoldPlacerSettings) shape; }
 	public DiamondPipeSettings pipe() { return (DiamondPipeSettings) shape; }
@@ -204,7 +206,8 @@ public final class DepositDefinition {
 				+ (abandonedMine.enabled() ? "|abandoned_mine:" + abandonedMine.chance() : "")
 				+ (isCoal() ? "|shape:coal_measures" : "")
 				+ (isDiamond() ? "|diamond:" + toJson() : "")
-				+ (isGold() ? "|gold:" + toJson() : "");
+				+ (isGold() ? "|gold:" + toJson() : "")
+				+ (isLapis() ? "|lapis:" + toJson() : "");
 	}
 
 	/** Deterministic schema-1 representation embedded in OreSpawn pattern settings. */

@@ -7,6 +7,7 @@ import zone.moddev.mc.realisticdeposits.generation.CoalMeasuresPattern;
 import zone.moddev.mc.realisticdeposits.generation.MineWorkingsGenerator;
 import zone.moddev.mc.realisticdeposits.generation.DiamondPattern;
 import zone.moddev.mc.realisticdeposits.generation.GoldPattern;
+import zone.moddev.mc.realisticdeposits.generation.LapisPattern;
 import zone.moddev.mc.realisticdeposits.content.ModContent;
 import zone.moddev.mc.realisticdeposits.integration.OreSpawnIntegration;
 import zone.moddev.mc.realisticdeposits.proxy.CommonProxy;
@@ -38,7 +39,7 @@ import net.minecraftforge.fml.common.registry.GameRegistry;
 public final class RealisticDeposits {
 	public static final String MOD_ID = "realisticdeposits";
 	public static final String NAME = "Realistic Deposits";
-	public static final String VERSION = "0.4.0.110021";
+	public static final String VERSION = "0.5.0.110021";
 	private static final OrePatternType STRATIFORM_SEAM = StratiformSeamPattern.type()
 			.setRegistryName(OreSpawnIntegration.PATTERN_ID);
 	private static final OrePatternType COAL_MEASURES = CoalMeasuresPattern.type()
@@ -51,6 +52,8 @@ public final class RealisticDeposits {
 			.setRegistryName(OreSpawnIntegration.GOLD_LODE_ID);
 	private static final OrePatternType GOLD_PLACER = GoldPattern.type(true)
 			.setRegistryName(OreSpawnIntegration.GOLD_PLACER_ID);
+	private static final OrePatternType LAPIS_LENS = LapisPattern.type()
+			.setRegistryName(OreSpawnIntegration.LAPIS_LENS_ID);
 
 	@SidedProxy(clientSide = "zone.moddev.mc.realisticdeposits.proxy.ClientProxy",
 			serverSide = "zone.moddev.mc.realisticdeposits.proxy.CommonProxy")
@@ -69,6 +72,7 @@ public final class RealisticDeposits {
 		event.getRegistry().register(DIAMOND_PLACER);
 		event.getRegistry().register(GOLD_LODE);
 		event.getRegistry().register(GOLD_PLACER);
+		event.getRegistry().register(LAPIS_LENS);
 	}
 
 	@Mod.EventHandler
@@ -92,6 +96,7 @@ public final class RealisticDeposits {
 		CoalMeasuresPattern.newServerSession();
 		DiamondPattern.newServerSession();
 		GoldPattern.newServerSession();
+		LapisPattern.newServerSession();
 	}
 
 	@Mod.EventHandler

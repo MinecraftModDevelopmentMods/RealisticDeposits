@@ -31,6 +31,10 @@ on:
         required: true
         default: false
         type: boolean
+      expected_checksums_sha256:
+        description: SHA-256 of the independently verified validation bundle's SHA256SUMS file.
+        required: false
+        type: string
 
 permissions:
   actions: read
@@ -382,6 +386,8 @@ jobs:
 
       - name: Stage the immutable release artifact
         id: artifact
+        env:
+          EXPECTED_CHECKSUMS_SHA256: ${{ inputs.expected_checksums_sha256 }}
         run: |
           set -euo pipefail
           bundle="$RUNNER_TEMP/release-bundle"
@@ -392,6 +398,13 @@ jobs:
           cp build/release/SHA256SUMS "$bundle/"
           cp CHANGELOG.md "$bundle/"
           (cd "$bundle" && sha256sum --check SHA256SUMS)
+          if [[ -n "$EXPECTED_CHECKSUMS_SHA256" ]]; then
+            if [[ ! "$EXPECTED_CHECKSUMS_SHA256" =~ ^[0-9a-fA-F]{64}$ ]]; then
+              echo "Expected checksum manifest SHA-256 must contain 64 hexadecimal digits" >&2
+              exit 1
+            fi
+            printf '%s  %s\n' "${EXPECTED_CHECKSUMS_SHA256,,}" "$bundle/SHA256SUMS" | sha256sum --check -
+          fi
           echo "name=RealisticDeposits-${{ needs.preflight.outputs.minecraft_version }}-${{ needs.preflight.outputs.loader_name }}-${{ needs.preflight.outputs.release_sha }}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
 
       - name: Upload immutable release artifact

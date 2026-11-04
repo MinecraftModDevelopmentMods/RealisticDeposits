@@ -16,7 +16,7 @@ class ProjectIdentityTest {
 	void usesStablePublicIdentity() {
 		assertEquals("realisticdeposits", RealisticDeposits.MOD_ID);
 		assertEquals("Realistic Deposits", RealisticDeposits.NAME);
-		assertEquals("0.4.0.110021", RealisticDeposits.VERSION);
+		assertEquals("0.5.0.110021", RealisticDeposits.VERSION);
 		net.minecraftforge.fml.common.Mod annotation = RealisticDeposits.class.getAnnotation(
 				net.minecraftforge.fml.common.Mod.class);
 		assertTrue(annotation.guiFactory().endsWith("RealisticDepositsGuiFactory"));

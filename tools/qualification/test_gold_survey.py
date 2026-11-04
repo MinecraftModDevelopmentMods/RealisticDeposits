@@ -11,7 +11,7 @@ from qualify_110 import ORESPAWN_SHA256
 class GoldSurveyChecksTest(unittest.TestCase):
     def test_controls_disable_every_catalogue_without_editing_the_defaults(self):
         catalogues = survey.control_catalogues()
-        self.assertEqual({"vanilla", "coal", "diamonds", "gold"}, set(catalogues))
+        self.assertEqual({"vanilla", "coal", "diamonds", "gold", "lapis"}, set(catalogues))
         self.assertTrue(all(not definition["enabled"] for catalogue in catalogues.values()
                             for definition in catalogue["deposits"]))
         self.assertTrue(any(definition["enabled"] for definition in

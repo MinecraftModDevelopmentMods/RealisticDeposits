@@ -70,6 +70,12 @@ public final class MineWorkingsRuntimeProbe {
 			WorldServer world = server.worldServerForDimension(0);
 			require(world.getSeed() == SEED, "This probe is restricted to its disposable fixed-seed world");
 			require(world.getSaveHandler().getWorldDirectory().getName().equals("mine-test-world"), "Unexpected world directory");
+			if (Boolean.getBoolean("rd.mines.lapis")) {
+				LapisWorkingsRuntimeChecks.run(world, phase);
+				LOG.info("RD_MINES_PASS {}", phase);
+				return;
+			}
+
 			if (Boolean.getBoolean("rd.mines.gold")) {
 				GoldWorkingsRuntimeChecks.run(world, phase);
 				LOG.info("RD_MINES_PASS {}", phase);

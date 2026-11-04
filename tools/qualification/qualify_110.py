@@ -6,6 +6,7 @@ import hashlib
 import json
 import re
 import shutil
+import socket
 import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -17,6 +18,17 @@ POLICIES = ("additive", "hybrid-default", "hybrid-15", "replacement")
 ORIGINS = ("native", "os1", "os3", "existing-override")
 DEPOSIT_ID = "realisticdeposits:deposit/realisticdeposits/qualification_iron"
 RESOURCE_KEY = "iron_ore"
+
+
+def check_ports(ports):
+    for port in ports:
+        if not 1 <= port <= 65535:
+            raise ValueError("Choose a base port whose full test range fits within 1-65535")
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+            try:
+                listener.bind(("127.0.0.1", port))
+            except OSError as error:
+                raise ValueError(f"Test port {port} is busy or reserved; choose another --base-port") from error
 
 
 def disabled_control_key():
@@ -81,7 +93,7 @@ def prepare(args, name, origin, policy, managed, port, bootstrap=False):
 
     settings = (
         "level-name=world\nlevel-seed=3346071746553592696\nlevel-type=FLAT\n"
-        f"generator-settings=3;minecraft:bedrock,{239 if RESOURCE_KEY in ('coal_ore', 'diamond_ore', 'gold_ore') else 127}*minecraft:stone,minecraft:grass;{37 if getattr(args, 'mesa', False) else 1};decoration\n"
+        f"generator-settings=3;minecraft:bedrock,{239 if RESOURCE_KEY in ('coal_ore', 'diamond_ore', 'gold_ore', 'lapis_ore') else 127}*minecraft:stone,minecraft:grass;{37 if getattr(args, 'mesa', False) else 1};decoration\n"
         f"server-ip=127.0.0.1\nserver-port={port}\nonline-mode=false\n"
         "generate-structures=false\nview-distance=3\nmax-tick-time=-1\nallow-nether=false\n"
         "spawn-animals=false\nspawn-monsters=false\n"
@@ -106,6 +118,13 @@ def prepare(args, name, origin, policy, managed, port, bootstrap=False):
             "type": "coal_measures", "strike_length": [64, 96], "down_dip_width": [16, 24],
             "beds": [2, 2], "thickness": [1, 1], "rock_interval": [2, 2],
             "maximum_dip_degrees": 0, "fold_amplitude": 0, "maximum_fault_throw": 0,
+        }
+    elif RESOURCE_KEY == "lapis_ore":
+        definition.update(min_y=180, max_y=215)
+        definition["shape"] = {
+            "type": "lapis_lens", "lenses": [2, 2], "strike_length": [64, 96],
+            "width": [12, 24], "thickness": [2, 3], "surface_cover": [4, 12],
+            "legacy_selection_scale": 0.25,
         }
     elif RESOURCE_KEY == "gold_ore":
         definition.update(min_y=180, max_y=215)
@@ -142,6 +161,10 @@ def prepare(args, name, origin, policy, managed, port, bootstrap=False):
     for default in gold["deposits"]:
         default["enabled"] = False
     write_json(root / "config/realisticdeposits/deposits/gold.json", gold)
+    lapis = json.loads((Path(__file__).parents[2] / "src/main/resources/assets/realisticdeposits/defaults/lapis.json")
+                       .read_text(encoding="utf-8"))
+    lapis["deposits"][0]["enabled"] = False
+    write_json(root / "config/realisticdeposits/deposits/lapis.json", lapis)
     sources = {}
 
     if origin != "native":
@@ -259,7 +282,8 @@ def check_profile(report, origin, policy, managed):
     default_coal = owned.pop("realisticdeposits:deposit/realisticdeposits/overworld_coal_measures", None)
     if default_coal is not None:
         assert default_coal["enabled"] is False, "The unrelated default coalfield must remain disabled"
-    for name in ("overworld_diamond_pipes", "overworld_diamond_placers", "overworld_gold_lodes", "overworld_gold_placers"):
+    for name in ("overworld_diamond_pipes", "overworld_diamond_placers", "overworld_gold_lodes", "overworld_gold_placers",
+                 "overworld_lapis_lenses"):
         default = owned.pop("realisticdeposits:deposit/realisticdeposits/" + name, None)
         if default is not None:
             assert default["enabled"] is False, "An unrelated default deposit rule became active"
@@ -438,12 +462,13 @@ def main():
     parser.add_argument("--jobs", type=int, default=2)
     parser.add_argument("--base-port", type=int, default=25900,
                         help="First loopback port; choose a separate range for concurrent matrices")
-    parser.add_argument("--resource", choices=("iron", "coal", "diamond", "gold"), default="iron")
+    parser.add_argument("--resource", choices=("iron", "coal", "diamond", "gold", "lapis"), default="iron")
     parser.add_argument("--mesa", action="store_true", help="Also exercise Mesa's separate gold generation")
     parser.add_argument("--only", default="", help="Run matching case names for focused diagnostics")
     parser.add_argument("--local-orespawn-sha256",
                         help="Explicit checksum for testing an unpublished local OreSpawn fix")
     args = parser.parse_args()
+    check_ports(range(args.base_port - 1, args.base_port + len(ORIGINS) * len(POLICIES) * 2))
     RESOURCE_KEY = args.resource + "_ore"
     DEPOSIT_ID = "realisticdeposits:deposit/realisticdeposits/qualification_" + args.resource
 

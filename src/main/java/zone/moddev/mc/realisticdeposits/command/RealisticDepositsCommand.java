@@ -69,6 +69,16 @@ public final class RealisticDepositsCommand extends CommandBase {
 		DepositDefinition definition = selectDefinition(state, args.length == 4 ? args[3] : null);
 		World world = sender.getEntityWorld();
 		String dimension = dimensionId(world.provider.getDimension());
+		if (definition.isLapis()) {
+			if (!(world instanceof net.minecraft.world.WorldServer)) {
+				throw new CommandException("Lapis previews require a server world");
+			}
+
+			sender.sendMessage(new TextComponentString(zone.moddev.mc.realisticdeposits.generation.LapisPattern
+					.preview(definition, (net.minecraft.world.WorldServer) world, regionX, regionZ)));
+			return;
+		}
+
 		if (definition.isGold()) {
 			if (!(world instanceof net.minecraft.world.WorldServer)) {
 				throw new CommandException("Gold previews require a server world");

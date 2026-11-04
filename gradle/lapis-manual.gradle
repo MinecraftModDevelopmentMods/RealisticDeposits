@@ -1,0 +1,42 @@
+// Lapis testing has its own settings and saves, separate from ordinary launches.
+tasks.named('isolateEclipseProductionRuns') {
+    doLast {
+        [['runClient.launch', 'runLapisDepositsClient.launch'],
+         ['runServer.launch', 'runLapisDepositsServer.launch']].each { pair ->
+            String contents = file(pair[0]).getText('UTF-8')
+            contents = contents.replaceAll(
+                    /(<stringAttribute key="org\.eclipse\.jdt\.launching\.WORKING_DIRECTORY" value=")[^"]*("\/>)/,
+                    '$1' + file('run-lapis-deposits').absolutePath.replace('\\', '\\\\') + '$2')
+            file(pair[1]).setText(contents.replace('\r\n', '\n'), 'UTF-8')
+        }
+    }
+}
+
+tasks.named('verifyEclipseProductionClasspath') {
+    doLast {
+        ['runLapisDepositsClient.launch', 'runLapisDepositsServer.launch'].each { name ->
+            String contents = file(name).getText('UTF-8').replace('\\', '/')
+            if (!contents.contains('run-lapis-deposits') || !contents.contains('ATTR_EXCLUDE_TEST_CODE')) {
+                throw new GradleException("Lapis launch is not isolated: ${name}")
+            }
+        }
+    }
+}
+
+tasks.register('prepareLapisDepositsManual') {
+    group = 'verification'
+    description = 'Prepares separate lapis-testing settings and Eclipse launches.'
+    dependsOn tasks.named('verifyEclipseProductionClasspath')
+    doLast {
+        ['vanilla', 'coal', 'diamonds', 'gold', 'lapis'].each { name ->
+            File target = file("run-lapis-deposits/config/realisticdeposits/deposits/${name}.json")
+            if (!target.isFile()) {
+                target.parentFile.mkdirs()
+                target.setText(file("src/main/resources/assets/realisticdeposits/defaults/${name}.json")
+                        .getText('UTF-8').replace('\r\n', '\n'), 'UTF-8')
+            }
+        }
+        logger.lifecycle('Use runLapisDepositsClient.launch and tools/qualification/LAPIS_TESTING.md.')
+        logger.lifecycle('Existing settings and saves were left alone. Create a fresh test world.')
+    }
+}

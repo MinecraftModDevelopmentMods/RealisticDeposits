@@ -92,6 +92,35 @@ decoration; that is not permission to remove an obstruction or rewrite old terra
 planner and the new stepped-access build. It compares their blocks, player
 markers, remaining sections and reloads. The source fixture is never modified.
 
+## Lapis checks
+
+`prepareLapisQualification` builds the isolated placement, native-harvesting
+and reserve probes. `lapis_110.py` checks fresh worlds, reloads, later chunks,
+reversed chunk order and saved rule switches. It also accepts optional Mineralogy
+fixtures with active, inactive or legacy strata. Exact host checks reject polished
+stone and unrelated rocks; the provider has no broad family-host alternative.
+
+`qualify_110.py --resource lapis` runs the complete policy/import matrix, using
+controlled high-level lenses so ordinary lapis can be counted separately.
+Choose a free `--base-port` range: the helper checks it before starting servers.
+
+`lapis_mines_110.py` checks saved workings, gradual access, later sections and
+water, structure and chest protection. Its controlled Mineralogy flat world
+checks a complete route; a separate natural infested-stone fixture checks that
+unsafe sections remain sealed. Neither changes production safety rules.
+
+`lapis_survey_110.py` measures complete lenses against native terrain and caves,
+with separate decorated vanilla controls. Four fixed survey seeds and two
+holdouts are reported by `lapis_balance_110.py`. Rewards count lapis pieces,
+including native Fortune, rather than treating each ore block as one piece.
+There is no compulsory vanilla-equivalent reward threshold.
+
+`lapis_upgrade_110.py` compares old Gold worlds with an old-build control through
+reload and later generation. `lapis_map_world_110.py` captures sections on copies
+of completed fixtures without changing their source worlds.
+
+See [the lapis walkthrough](LAPIS_TESTING.md) for the isolated Eclipse launch.
+
 ## Running the policy matrix
 
 For the imported-profile editor check, use the separate
@@ -177,9 +206,9 @@ terrain cases populate the complete mine footprint before checking reloads;
 vanilla decoration in adjacent new chunks can otherwise change unworked ground.
 The combined local pass runs the controlled cases.
 
-## Gold and the combined regression pass
+## Combined regression pass
 
-The combined local driver covers iron, coal, diamonds and gold, plus a separate
+The combined local driver covers iron, coal, diamonds, gold and lapis, plus a separate
 Mesa gold policy matrix. It also runs source-disable, gravel-harvest and
 workings checks. Each policy matrix includes imports, explicit overrides,
 saved management toggles, reloads and later-generated chunks. Logged errors
@@ -190,7 +219,7 @@ the driver refuses execution when `CI` or `GITHUB_ACTIONS` is true. Prepare its
 isolated probes locally first:
 
 ```powershell
-.\gradlew.bat preparePolicyQualification prepareCoalQualification prepareDiamondQualification prepareGoldQualification prepareMineQualification --init-script tools/qualification/probes.init.gradle
+.\gradlew.bat preparePolicyQualification prepareCoalQualification prepareDiamondQualification prepareGoldQualification prepareLapisQualification prepareMineQualification --init-script tools/qualification/probes.init.gradle
 ```
 
 Then run `python tools/qualification/ci_runtime.py --java <Java-8-executable>`
