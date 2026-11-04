@@ -19,7 +19,8 @@ class LocalPackagedPlanTest(unittest.TestCase):
     def test_local_init_script_prepares_every_probe_used_by_the_driver(self):
         script = (ci_runtime.ROOT / "tools/qualification/probes.init.gradle").read_text()
         for task in ("preparePolicyQualification", "prepareCoalQualification",
-                     "prepareDiamondQualification", "prepareGoldQualification", "prepareMineQualification"):
+                     "prepareDiamondQualification", "prepareGoldQualification", "prepareLapisQualification",
+                     "prepareMineQualification"):
             self.assertIn(task, script)
 
     def test_hosted_workflows_never_launch_packaged_minecraft_suites(self):
@@ -55,13 +56,24 @@ class LocalPackagedPlanTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "local-only"):
                 ci_runtime.main()
 
+    def test_uploaded_jars_match_the_current_candidate_version(self):
+        properties = dict(line.split("=", 1) for line in
+                          (ci_runtime.ROOT / "gradle.properties").read_text().splitlines()
+                          if "=" in line and not line.startswith("#"))
+        workflow = (ci_runtime.ROOT / ".github/workflows/ci.yml").read_text()
+
+        for suffix in ("", "-sources", "-javadoc"):
+            self.assertIn(f"build/libs/RealisticDeposits-{properties['mod_version']}{suffix}.jar", workflow)
+
     def test_every_deposit_has_policy_and_gameplay_coverage(self):
         plan = ci_runtime.suite_plan()
-        for resource in ("iron", "coal", "diamond", "gold"):
+        for resource in ("iron", "coal", "diamond", "gold", "lapis"):
             self.assertIn("policy-" + resource, plan)
         self.assertIn("--mesa", plan["policy-gold-mesa"]["arguments"])
         self.assertIn("gold", plan)
         self.assertIn("gold-workings", plan)
+        self.assertIn("lapis", plan)
+        self.assertIn("lapis-workings", plan)
         self.assertIn("workings", plan)
         self.assertIn("iron-workings", plan)
 

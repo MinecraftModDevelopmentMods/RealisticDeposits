@@ -1,5 +1,24 @@
 gradle.afterProject { project, state ->
     if (project == project.rootProject && state.failure == null) {
+        def lapisInput = project.tasks.register('lapisQualificationProbeInput', Jar) {
+            dependsOn project.tasks.named('testClasses')
+            from project.sourceSets.test.output.classesDirs
+            include 'zone/moddev/mc/realisticdeposits/generation/LapisRuntimeProbe*.class'
+            include 'zone/moddev/mc/realisticdeposits/generation/LapisHarvestRuntimeChecks*.class'
+            include 'zone/moddev/mc/realisticdeposits/generation/LapisSurveyProbe*.class'
+            archiveFileName = 'lapis-probe-deobf.jar'
+            destinationDirectory = project.layout.buildDirectory.dir('qualification')
+        }
+        def lapisPackaged = project.renamer.classes(lapisInput) {
+            map.from project.minecraft.dependency.toSrgFile
+            output = project.layout.buildDirectory.file('qualification/lapis-probe.jar')
+        }
+        project.tasks.register('prepareLapisQualification') {
+            group = 'verification'
+            description = 'Builds the isolated lapis placement and survey probes.'
+            dependsOn lapisPackaged
+        }
+
         def goldInput = project.tasks.register('goldQualificationProbeInput', Jar) {
             dependsOn project.tasks.named('testClasses')
             from project.sourceSets.test.output.classesDirs
@@ -144,6 +163,7 @@ gradle.afterProject { project, state ->
             include 'zone/moddev/mc/realisticdeposits/generation/MineWorkingsRuntimeProbe*.class'
             include 'zone/moddev/mc/realisticdeposits/generation/PipeWorkingsRuntimeChecks*.class'
             include 'zone/moddev/mc/realisticdeposits/generation/GoldWorkingsRuntimeChecks*.class'
+            include 'zone/moddev/mc/realisticdeposits/generation/LapisWorkingsRuntimeChecks*.class'
             archiveFileName = 'mine-probe-deobf.jar'
             destinationDirectory = project.layout.buildDirectory.dir('qualification')
         }

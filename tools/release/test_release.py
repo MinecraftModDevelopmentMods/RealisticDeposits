@@ -9,11 +9,11 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class ReleaseContractTest(unittest.TestCase):
-    def test_public_dependency_and_beta_candidate_version(self):
+    def test_public_dependency_and_candidate_version(self):
         properties = dict(line.split("=", 1) for line in
                           (ROOT / "gradle.properties").read_text().splitlines()
                           if "=" in line and not line.startswith("#"))
-        self.assertEqual("0.4.0.110021", properties["mod_version"])
+        self.assertEqual("0.5.0.110021", properties["mod_version"])
         self.assertEqual("4.1.5.110021", properties["orespawn_version"])
         self.assertEqual("9397156", properties["orespawn_curse_file_id"])
         self.assertEqual("1E580EBB8D93B1256E2E81C7D0D815DEAAAC58A028CB5A77A52773B62048E010",
@@ -51,6 +51,15 @@ class ReleaseContractTest(unittest.TestCase):
         workflow = (ROOT / ".github/workflows/codeql-analysis.yml").read_text()
         self.assertIn("build-mode: manual", workflow)
         self.assertIn("--no-build-cache --rerun-tasks", workflow)
+
+    def test_verified_manifest_is_checked_before_publication(self):
+        workflow = (ROOT / ".github/workflows/deploy-release.yml").read_text()
+        staging = workflow.split("      - name: Stage the immutable release artifact", 1)[1]
+        staging = staging.split("      - name: Upload immutable release artifact", 1)[0]
+        self.assertIn("inputs.expected_checksums_sha256", staging)
+        self.assertIn('(cd "$bundle" && sha256sum --check SHA256SUMS)', staging)
+        self.assertIn('"${EXPECTED_CHECKSUMS_SHA256,,}" "$bundle/SHA256SUMS" | sha256sum --check -',
+                      staging)
 
 
 if __name__ == "__main__":

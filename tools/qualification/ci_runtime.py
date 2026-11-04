@@ -36,7 +36,7 @@ def download(url, target, expected):
 
 def suite_plan():
     suites = {}
-    for resource in ("iron", "coal", "diamond", "gold"):
+    for resource in ("iron", "coal", "diamond", "gold", "lapis"):
         suites["policy-" + resource] = {
             "script": "qualify_110.py", "probe": "policy-probe.jar",
             "arguments": ["--resource", resource], "ports": True,
@@ -54,6 +54,10 @@ def suite_plan():
         ("gold", "gold_110.py", "gold-probe.jar",
          ["standalone", "normal", "reverse", "source-off", "source-enable", "source-world-off",
           "source-dimension-off", "placer-off"], True),
+        ("lapis", "lapis_110.py", "lapis-probe.jar",
+         ["standalone", "normal", "reverse", "off", "world-off", "world-enable"], True),
+        ("lapis-workings", "lapis_mines_110.py", "mine-probe.jar",
+         ["flat", "reverse", "off", "chance-zero", "source-off", "structure", "wet", "blocked"], True),
         ("workings", "pipe_mines_110.py", "mine-probe.jar",
          ["flat", "reverse", "off", "chance-zero", "source-off", "structure", "wet", "blocked"], False),
         ("gold-workings", "gold_mines_110.py", "mine-probe.jar",

@@ -6,18 +6,20 @@
 ![Realistic Deposits logo](src/main/resources/assets/realisticdeposits/textures/logo.png)
 
 Realistic Deposits makes finding ore a reason to explore, then build a proper
-mine. Rare iron districts, layered coalfields, diamond pipes and gold veins
-give you deposits worth returning to, with old workings leading into some of them.
+mine. Rare iron districts, layered coalfields, diamond pipes, gold veins and
+lapis lenses give you deposits worth returning to, with old workings leading
+into some of them.
 Small pockets of diamond- and gold-bearing river gravel offer another way to prospect.
 It runs on [MMD OreSpawn](https://github.com/MinecraftModDevelopmentMods/OreSpawn).
 
 The project starts with Minecraft 1.10.2 and is intended to follow the
 maintained OreSpawn branches across Forge and NeoForge.
 
-Version 0.4.0.110021 is a beta for Minecraft 1.10.2. It adds gold
-veins and linked river placers to the existing deposits and stepped workings.
-Existing worlds keep their settings and saved mine layouts. Back up important
-worlds before updating.
+Version 0.5.0.110021 is an alpha for Minecraft 1.10.2. It adds rare, compact
+lapis lenses and short abandoned workings, with 15% of ordinary background
+lapis retained by default. Try a fresh world to see the new rules: existing
+worlds keep their settings, generated chunks and saved mine layouts. Back up
+important worlds before updating.
 
 ## Current features
 
@@ -39,15 +41,19 @@ worlds before updating.
   or reshaping rivers. See [diamond deposits](docs/DIAMONDS.md).
 - Steep gold veins with rich shoots, lean stretches and linked river gravel.
   See [gold deposits](docs/GOLD.md).
+- Compact lapis lenses with richer pockets and short workings. Natural marble
+  hosts them when Mineralogy strata are active; ordinary stone is used otherwise.
+  See [lapis deposits](docs/LAPIS.md).
 - Configurable support for vanilla and modded resources.
 - Safe generation that avoids air, fluids, bedrock, block entities, structures,
   and undeclared host blocks.
-- Live reload for iron and coal geometry. Gold, diamond and other structural
+- Live reload for iron and coal geometry. Lapis, gold, diamond and other structural
   changes wait until restart.
 - An entry in both Forge's Mods configuration and OreSpawn's World Settings.
 - Abandoned workings with sloping, stepped entrances and short underground galleries.
   New defaults attempt them at every iron formation, coalfield, diamond pipe
-  and goldfield where safe. River placers stay untouched. See the [mine settings](docs/ABANDONED_MINES.md).
+  and goldfield, plus each lapis district, where safe. River placers stay untouched.
+  See the [mine settings](docs/ABANDONED_MINES.md).
 
 Coalfields can already use Mineralogy's existing shale, siltstone and
 conglomerate. Wider catalogues for Mineralogy, Base Metals, Modern Metals,
@@ -76,6 +82,7 @@ config/realisticdeposits/deposits/vanilla.json
 config/realisticdeposits/deposits/coal.json
 config/realisticdeposits/deposits/diamonds.json
 config/realisticdeposits/deposits/gold.json
+config/realisticdeposits/deposits/lapis.json
 ```
 
 The supplied definition describes one rare iron district using a 640–960 block
@@ -100,6 +107,13 @@ leaves spent gravel and has a one-in-four chance of a gold nugget. Fortune
 increases successful drops. The gold catalogue keeps 15% ordinary background
 gold; the larger deposits are deliberately unevenly distributed. Their total
 reward is not forced to match vanilla.
+
+Lapis occurs in smaller, irregular lenses rather than huge ore-filled layers.
+With physical Mineralogy strata, lenses fit into natural marble; limestone,
+dolomite and decorative marble are not substitutes. Without those strata,
+natural vanilla stone variants provide a simpler setting. The separate lapis
+catalogue keeps 15% background generation. A discovery can supply a lasting
+reserve because each vanilla lapis ore block drops several lapis pieces.
 
 Deposits only affect newly generated chunks. Changing these settings does not
 retrogen, replace, or rewrite an existing chunk.
@@ -146,7 +160,7 @@ formations:
 
 `reload` requires operator permission. For iron and coal it applies `enabled`,
 selection, shape, height, geome, family, and alignment changes. Diamond geometry
-and source links require a restart, as do gold settings. Resource,
+and source links require a restart, as do gold and lapis settings. Resource,
 dimension, host, biome-filter, interaction-policy, scale, added, and removed
 definition changes are structural and take effect after restart. Abandoned-mine
 settings are also captured with the world's deposit definition. New provider
@@ -190,6 +204,7 @@ The [mine-testing walkthrough](tools/qualification/MINES_TESTING.md) uses a
 separate Eclipse profile and disposable saves for the new workings.
 For coalfields, use `prepareCoalMeasuresManual` and the
 [coal-testing walkthrough](tools/qualification/COAL_TESTING.md).
+For lapis, see the [lapis walkthrough](tools/qualification/LAPIS_TESTING.md).
 
 Hosted CI/CD keeps to builds, unit/helper tests, static checks, reproducible
 jars, dependency hashes and ordinary Eclipse launch definitions. It does not

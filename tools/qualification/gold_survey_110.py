@@ -21,7 +21,7 @@ def load_catalogue(name):
 
 
 def control_catalogues():
-    catalogues = {name: load_catalogue(name) for name in ("vanilla", "coal", "diamonds", "gold")}
+    catalogues = {name: load_catalogue(name) for name in ("vanilla", "coal", "diamonds", "gold", "lapis")}
     for catalogue in catalogues.values():
         for definition in catalogue["deposits"]:
             definition["enabled"] = False

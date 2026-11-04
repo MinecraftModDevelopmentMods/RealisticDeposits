@@ -2,6 +2,7 @@
 
 import copy
 import tempfile
+import socket
 import unittest
 from pathlib import Path
 from unittest.mock import Mock
@@ -30,6 +31,17 @@ def sample(ordinary, denied):
 
 
 class QualificationChecksTest(unittest.TestCase):
+    def test_a_busy_test_port_fails_before_starting_any_servers(self):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+            listener.bind(("127.0.0.1", 0))
+            listener.listen()
+            with self.assertRaisesRegex(ValueError, "busy or reserved"):
+                qualify_110.check_ports([listener.getsockname()[1]])
+
+        for port in (-1, 0, 65536):
+            with self.assertRaises(ValueError):
+                qualify_110.check_ports([port])
+
     def test_disabled_control_cannot_overwrite_the_active_gold_import(self):
         for resource in ("iron_ore", "coal_ore", "diamond_ore", "gold_ore"):
             with patch.object(qualify_110, "RESOURCE_KEY", resource):
