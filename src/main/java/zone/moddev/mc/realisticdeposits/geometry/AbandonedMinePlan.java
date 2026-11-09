@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /** A frozen, bounded set of workings, indexed by the chunks that build them. */
 public final class AbandonedMinePlan {
@@ -68,6 +69,7 @@ public final class AbandonedMinePlan {
 	public MinePoint landing() { return landing; }
 	public Map<Long, MineBlock> blocks() { return blocks; }
 	public BlockBounds bounds() { return bounds; }
+	public Set<Long> chunkKeys() { return chunks.keySet(); }
 
 	public List<Cell> cellsInChunk(int x, int z) {
 		return chunks.getOrDefault(MinePoint.chunkKey(x, z), Collections.emptyList());

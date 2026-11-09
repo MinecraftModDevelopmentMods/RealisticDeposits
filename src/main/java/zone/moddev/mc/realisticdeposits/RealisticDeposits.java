@@ -8,6 +8,7 @@ import zone.moddev.mc.realisticdeposits.generation.MineWorkingsGenerator;
 import zone.moddev.mc.realisticdeposits.generation.DiamondPattern;
 import zone.moddev.mc.realisticdeposits.generation.GoldPattern;
 import zone.moddev.mc.realisticdeposits.generation.LapisPattern;
+import zone.moddev.mc.realisticdeposits.generation.EmeraldPattern;
 import zone.moddev.mc.realisticdeposits.content.ModContent;
 import zone.moddev.mc.realisticdeposits.integration.OreSpawnIntegration;
 import zone.moddev.mc.realisticdeposits.proxy.CommonProxy;
@@ -34,12 +35,12 @@ import net.minecraftforge.fml.common.registry.GameRegistry;
  */
 @Mod(modid = RealisticDeposits.MOD_ID, name = RealisticDeposits.NAME,
 		version = RealisticDeposits.VERSION, acceptedMinecraftVersions = "[1.10.2]",
-		dependencies = "required-after:orespawn@[4.1.5.110021,5.0.0)",
+		dependencies = "required-after:orespawn@[4.1.6.110021,5.0.0)",
 		guiFactory = "zone.moddev.mc.realisticdeposits.client.RealisticDepositsGuiFactory")
 public final class RealisticDeposits {
 	public static final String MOD_ID = "realisticdeposits";
 	public static final String NAME = "Realistic Deposits";
-	public static final String VERSION = "0.5.0.110021";
+	public static final String VERSION = "0.6.0.110021";
 	private static final OrePatternType STRATIFORM_SEAM = StratiformSeamPattern.type()
 			.setRegistryName(OreSpawnIntegration.PATTERN_ID);
 	private static final OrePatternType COAL_MEASURES = CoalMeasuresPattern.type()
@@ -54,6 +55,8 @@ public final class RealisticDeposits {
 			.setRegistryName(OreSpawnIntegration.GOLD_PLACER_ID);
 	private static final OrePatternType LAPIS_LENS = LapisPattern.type()
 			.setRegistryName(OreSpawnIntegration.LAPIS_LENS_ID);
+	private static final OrePatternType EMERALD_POCKETS = EmeraldPattern.type()
+			.setRegistryName(OreSpawnIntegration.EMERALD_POCKETS_ID);
 
 	@SidedProxy(clientSide = "zone.moddev.mc.realisticdeposits.proxy.ClientProxy",
 			serverSide = "zone.moddev.mc.realisticdeposits.proxy.CommonProxy")
@@ -73,6 +76,7 @@ public final class RealisticDeposits {
 		event.getRegistry().register(GOLD_LODE);
 		event.getRegistry().register(GOLD_PLACER);
 		event.getRegistry().register(LAPIS_LENS);
+		event.getRegistry().register(EMERALD_POCKETS);
 	}
 
 	@Mod.EventHandler
@@ -97,6 +101,7 @@ public final class RealisticDeposits {
 		DiamondPattern.newServerSession();
 		GoldPattern.newServerSession();
 		LapisPattern.newServerSession();
+		EmeraldPattern.newServerSession();
 	}
 
 	@Mod.EventHandler

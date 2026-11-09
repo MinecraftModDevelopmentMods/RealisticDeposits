@@ -1,6 +1,6 @@
 name: Release Realistic Deposits
 
-run-name: Release RealisticDeposits ${{ inputs.release_version }} (CurseForge ${{ inputs.curseforge_release_level }})
+run-name: Release RealisticDeposits ${{ inputs.release_version }} (${{ inputs.mode }}, ${{ inputs.publication_scope }}, CurseForge ${{ inputs.curseforge_release_level }})
 
 on:
   workflow_dispatch:
@@ -26,8 +26,16 @@ on:
           - release
           - beta
           - alpha
+      publication_scope:
+        description: Publish to all release destinations or to CurseForge only.
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - curseforge-only
       confirm_live_publication:
-        description: Confirm publication to Maven, CurseForge, and GitHub after the build passes.
+        description: Confirm live publication to the selected destinations after the build passes.
         required: true
         default: false
         type: boolean
@@ -141,6 +149,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REQUESTED_VERSION: ${{ inputs.release_version }}
+          PUBLICATION_SCOPE: ${{ inputs.publication_scope }}
         run: |
           set -euo pipefail
 
@@ -248,6 +257,11 @@ jobs:
           fi
 
           release_sha="$(git rev-parse HEAD)"
+          if [[ "$PUBLICATION_SCOPE" == "curseforge-only" ]] &&
+             [[ "$GITHUB_REF" != "refs/heads/${{ steps.route.outputs.target_branch }}" || "$release_sha" != "$GITHUB_SHA" ]]; then
+            echo "CurseForge-only releases must run on the current target branch commit." >&2
+            exit 1
+          fi
           release_tag="$release_version"
           echo "release_sha=$release_sha" >> "$GITHUB_OUTPUT"
           echo "release_version=$release_version" >> "$GITHUB_OUTPUT"
@@ -419,6 +433,7 @@ jobs:
         env:
           RELEASE_BRANCH: ${{ needs.preflight.outputs.target_branch }}
           RELEASE_LEVEL: ${{ inputs.curseforge_release_level }}
+          PUBLICATION_SCOPE: ${{ inputs.publication_scope }}
           RELEASE_SHA: ${{ needs.preflight.outputs.release_sha }}
           RELEASE_VERSION: ${{ needs.preflight.outputs.release_version }}
         run: |
@@ -429,7 +444,10 @@ jobs:
             echo "- Target branch: \`$RELEASE_BRANCH\`"
             echo "- Commit: \`$RELEASE_SHA\`"
             echo "- CurseForge release level: \`$RELEASE_LEVEL\`"
-            echo "- GitHub Release type: prerelease"
+            echo "- Publication scope: \`$PUBLICATION_SCOPE\`"
+            if [[ "$PUBLICATION_SCOPE" == "all" ]]; then
+              echo "- GitHub Release type: prerelease"
+            fi
             echo
             echo "### Public artifact checksums"
             echo '```text'
@@ -449,10 +467,12 @@ jobs:
       - name: Confirm publication and release-secret access
         env:
           CONFIRM_LIVE_PUBLICATION: ${{ inputs.confirm_live_publication }}
+          PUBLICATION_SCOPE: ${{ inputs.publication_scope }}
+          EXPECTED_CHECKSUMS_SHA256: ${{ inputs.expected_checksums_sha256 }}
           CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
-          MAVEN_UPLOAD_URL: ${{ secrets.MAVEN_UPLOAD_URL }}
-          MAVEN_UPLOAD_USERNAME: ${{ secrets.MAVEN_UPLOAD_USERNAME }}
-          MAVEN_UPLOAD_PASSWORD: ${{ secrets.MAVEN_UPLOAD_PASSWORD }}
+          MAVEN_UPLOAD_URL: ${{ inputs.publication_scope == 'all' && secrets.MAVEN_UPLOAD_URL || '' }}
+          MAVEN_UPLOAD_USERNAME: ${{ inputs.publication_scope == 'all' && secrets.MAVEN_UPLOAD_USERNAME || '' }}
+          MAVEN_UPLOAD_PASSWORD: ${{ inputs.publication_scope == 'all' && secrets.MAVEN_UPLOAD_PASSWORD || '' }}
         run: |
           set -euo pipefail
           if [[ "$CONFIRM_LIVE_PUBLICATION" != "true" ]]; then
@@ -460,8 +480,19 @@ jobs:
             exit 1
           fi
           echo "Live publication confirmed for ${{ needs.preflight.outputs.release_tag }}"
+          required=(CURSEFORGE_TOKEN)
+          case "$PUBLICATION_SCOPE" in
+            all) required+=(MAVEN_UPLOAD_URL MAVEN_UPLOAD_USERNAME MAVEN_UPLOAD_PASSWORD) ;;
+            curseforge-only)
+              if [[ ! "$EXPECTED_CHECKSUMS_SHA256" =~ ^[0-9a-fA-F]{64}$ ]]; then
+                echo "CurseForge-only publication requires the verified validation manifest SHA-256." >&2
+                exit 1
+              fi
+              ;;
+            *) echo "Unknown publication scope." >&2; exit 1 ;;
+          esac
           missing=()
-          for name in CURSEFORGE_TOKEN MAVEN_UPLOAD_URL MAVEN_UPLOAD_USERNAME MAVEN_UPLOAD_PASSWORD; do
+          for name in "${required[@]}"; do
             if [[ -z "${!name:-}" ]]; then
               missing+=("$name")
             fi
@@ -470,10 +501,11 @@ jobs:
             printf 'Required release secret is unavailable: %s\n' "${missing[@]}" >&2
             exit 1
           fi
-          echo "All four required release secrets are available."
+          echo "The required secrets for the selected scope are available."
 
   create_release_tag:
     name: Create validated release tag
+    if: inputs.mode == 'publish' && inputs.publication_scope == 'all'
     needs:
       - preflight
       - build
@@ -515,6 +547,7 @@ jobs:
 
   publish_maven:
     name: Publish Maven
+    if: inputs.mode == 'publish' && inputs.publication_scope == 'all'
     needs:
       - preflight
       - build
@@ -620,9 +653,16 @@ jobs:
 
   publish_curseforge:
     name: Publish CurseForge
+    if: >-
+      ${{ !cancelled() && inputs.mode == 'publish' &&
+          needs.preflight.result == 'success' && needs.build.result == 'success' &&
+          needs.release_confirmation.result == 'success' &&
+          ((inputs.publication_scope == 'curseforge-only' && needs.publish_maven.result == 'skipped') ||
+           (inputs.publication_scope == 'all' && needs.publish_maven.result == 'success')) }}
     needs:
       - preflight
       - build
+      - release_confirmation
       - publish_maven
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -668,6 +708,7 @@ jobs:
 
   publish_github:
     name: Publish GitHub Release
+    if: inputs.mode == 'publish' && inputs.publication_scope == 'all'
     needs:
       - preflight
       - build

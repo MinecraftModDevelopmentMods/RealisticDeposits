@@ -48,7 +48,7 @@ def main():
         settings = settings.replace("3346071746553592696", str(SEEDS[index]))
         (root / "server.properties").write_text(settings, encoding="utf-8", newline="\n")
 
-        for name in ("vanilla", "coal", "diamonds", "gold", "lapis"):
+        for name in ("vanilla", "coal", "diamonds", "gold", "lapis", "emerald"):
             catalogue = json.loads((ROOT / f"src/main/resources/assets/realisticdeposits/defaults/{name}.json").read_text())
             for definition in catalogue["deposits"]:
                 definition["enabled"] = name == "lapis" and not args.control

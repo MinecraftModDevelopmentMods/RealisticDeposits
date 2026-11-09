@@ -11,7 +11,7 @@ from qualify_110 import ORESPAWN_SHA256
 class GoldSurveyChecksTest(unittest.TestCase):
     def test_controls_disable_every_catalogue_without_editing_the_defaults(self):
         catalogues = survey.control_catalogues()
-        self.assertEqual({"vanilla", "coal", "diamonds", "gold", "lapis"}, set(catalogues))
+        self.assertEqual({"vanilla", "coal", "diamonds", "gold", "lapis", "emerald"}, set(catalogues))
         self.assertTrue(all(not definition["enabled"] for catalogue in catalogues.values()
                             for definition in catalogue["deposits"]))
         self.assertTrue(any(definition["enabled"] for definition in
@@ -25,7 +25,7 @@ class GoldSurveyChecksTest(unittest.TestCase):
 
     def test_all_surveys_must_use_the_same_public_engine_mod_and_probe(self):
         inputs = {"RealisticDeposits-0.4.0.110021.jar": "A" * 64,
-                  "OreSpawn-4.1.5.110021.jar": ORESPAWN_SHA256,
+                  "OreSpawn-4.1.6.110021.jar": ORESPAWN_SHA256,
                   "gold-survey.jar": "B" * 64}
         self.assertEqual("A" * 64, balance.checked_candidate([inputs, inputs, inputs]))
         for key in inputs:

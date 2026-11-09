@@ -25,6 +25,8 @@ public final class OreSpawnIntegration {
 			new ResourceLocation("realisticdeposits", "gold_placer");
 	public static final ResourceLocation LAPIS_LENS_ID =
 			new ResourceLocation("realisticdeposits", "lapis_lens");
+	public static final ResourceLocation EMERALD_POCKETS_ID =
+			new ResourceLocation("realisticdeposits", "emerald_pockets");
 
 	private OreSpawnIntegration() { }
 
@@ -62,6 +64,7 @@ public final class OreSpawnIntegration {
 			case "gold_lode": return GOLD_LODE_ID;
 			case "gold_placer": return GOLD_PLACER_ID;
 			case "lapis_lens": return LAPIS_LENS_ID;
+			case "emerald_pockets": return EMERALD_POCKETS_ID;
 			default: throw new IllegalArgumentException("Unsupported shape: " + definition.shape().type());
 		}
 	}
@@ -100,7 +103,8 @@ public final class OreSpawnIntegration {
 		final DepositDefinition linkedSource = source;
 		provider.ore(oreId, output, ore -> {
 			ore.retrogen(false).suppressVanilla(false);
-			if (definition.isCoal() || definition.isDiamond() || definition.isGold() || definition.isLapis()) {
+			if (definition.isCoal() || definition.isDiamond() || definition.isGold()
+					|| definition.isLapis() || definition.isEmerald()) {
 				ore.enabled(definition.enabled() && (linkedSource == null || linkedSource.enabled()));
 			}
 			if (definition.isDiamondPlacer()) {
@@ -121,12 +125,13 @@ public final class OreSpawnIntegration {
 							if (net.minecraft.block.Block.REGISTRY.containsKey(id)) dimension.hostState(id, 0);
 							if ((definition.isDiamondPlacer() || definition.isGoldPlacer())
 									&& "minecraft:sand".equals(host)) dimension.hostState(id, 1);
-						} else if ((definition.isDiamondPipe() || definition.isGoldLode() || definition.isLapis())
+						} else if ((definition.isDiamondPipe() || definition.isGoldLode()
+								|| definition.isLapis() || definition.isEmerald())
 								&& "minecraft:stone".equals(host)) {
 							for (int metadata : new int[] {0, 1, 3, 5}) {
 								dimension.hostState(new ResourceLocation(host), metadata);
 							}
-						} else if (!definition.isLapis()) {
+						} else if (!definition.isLapis() && !definition.isEmerald()) {
 							dimension.hostBlock(new ResourceLocation(host));
 						}
 					}
@@ -134,10 +139,14 @@ public final class OreSpawnIntegration {
 						ResourceLocation marble = new ResourceLocation("mineralogy", "marble");
 						if (net.minecraft.block.Block.REGISTRY.containsKey(marble)) dimension.hostState(marble, 0);
 					}
+					if (definition.isEmerald()) {
+						ResourceLocation schist = new ResourceLocation("mineralogy", "schist");
+						if (net.minecraft.block.Block.REGISTRY.containsKey(schist)) dimension.hostState(schist, 0);
+					}
 					// Every geology family is a safe outer host. ROCK_ALIGNED applies the
 					// current live family selection per output block inside the pattern.
 					if (!definition.isCoal() && !definition.isDiamondPlacer()
-							&& !definition.isGoldPlacer() && !definition.isLapis()) {
+							&& !definition.isGoldPlacer() && !definition.isLapis() && !definition.isEmerald()) {
 						for (GeologyFamily family : GeologyFamily.values()) dimension.hostFamily(family);
 					}
 					for (String biome : definition.biomeIds()) dimension.biome(new ResourceLocation(biome));

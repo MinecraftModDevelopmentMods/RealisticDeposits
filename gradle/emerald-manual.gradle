@@ -1,0 +1,36 @@
+// Reuse the existing Eclipse project, but never launch into the ordinary saves.
+def emeraldLaunches = ['runClient': 'runEmeraldDepositsClient', 'runServer': 'runEmeraldDepositsServer']
+
+tasks.named('isolateEclipseProductionRuns') {
+    doLast {
+        emeraldLaunches.each { source, target ->
+            String contents = file("${source}.launch").getText('UTF-8')
+            String directory = file('run-emerald-deposits').absolutePath.replace('\\', '\\\\')
+            contents = contents.replaceAll(
+                    /(<stringAttribute key="org\.eclipse\.jdt\.launching\.WORKING_DIRECTORY" value=")[^"]*("\/>)/,
+                    '$1' + directory + '$2')
+            file("${target}.launch").setText(contents.replace('\r\n', '\n'), 'UTF-8')
+        }
+    }
+}
+
+tasks.named('verifyEclipseProductionClasspath') {
+    doLast {
+        emeraldLaunches.values().each { name ->
+            String contents = file("${name}.launch").getText('UTF-8')
+            if (!contents.contains('run-emerald-deposits') || !contents.contains('ATTR_EXCLUDE_TEST_CODE')) {
+                throw new GradleException("Emerald launch is not isolated: ${name}")
+            }
+        }
+    }
+}
+
+tasks.register('prepareEmeraldDepositsManual') {
+    group = 'verification'
+    description = 'Prepares the disposable emerald launch directory in this Eclipse project.'
+    dependsOn tasks.named('verifyEclipseProductionClasspath')
+    doLast {
+        file('run-emerald-deposits').mkdirs()
+        logger.lifecycle('Use runEmeraldDepositsClient.launch in the existing workspace and create a fresh world.')
+    }
+}

@@ -25,6 +25,7 @@ import zone.moddev.mc.realisticdeposits.model.DiamondPlacerSettings;
 import zone.moddev.mc.realisticdeposits.model.GoldLodeSettings;
 import zone.moddev.mc.realisticdeposits.model.GoldPlacerSettings;
 import zone.moddev.mc.realisticdeposits.model.LapisLensSettings;
+import zone.moddev.mc.realisticdeposits.model.EmeraldPocketSettings;
 import zone.moddev.mc.realisticdeposits.model.IntRange;
 import zone.moddev.mc.realisticdeposits.model.InteractionPolicy;
 import zone.moddev.mc.realisticdeposits.model.StratiformSeamSettings;
@@ -114,6 +115,32 @@ public final class DepositCatalogLoader {
 
 	private static DepositShapeSettings shape(JsonObject shape, String path, List<String> warnings) {
 		String type = string(shape, "type", path + " shape");
+		if ("emerald_pockets".equals(type)) {
+			unknownKeys(shape, keys("type", "pockets", "strike_length", "ore_blocks", "surface_cover", "rich_find", "vein_trace", "large_mine"),
+					path + " shape", warnings);
+			EmeraldPocketSettings.RichFind rich = null;
+			if (shape.has("rich_find")) {
+				JsonObject spec = object(shape, "rich_find", path);
+				String richPath = path + " rich_find";
+				unknownKeys(spec, keys("chance", "pockets", "strike_length", "ore_blocks", "workings"), richPath, warnings);
+				rich = new EmeraldPocketSettings.RichFind(number(spec, "chance", richPath),
+						integerRange(spec, "pockets", richPath), integerRange(spec, "strike_length", richPath),
+						integerRange(spec, "ore_blocks", richPath), bool(spec, "workings", false, richPath));
+			}
+			EmeraldPocketSettings.LargeMine large = null;
+			if (shape.has("large_mine")) {
+				String largePath = path + " large_mine";
+				JsonObject spec = object(shape, "large_mine", path);
+				unknownKeys(spec, keys("chance", "zones", "strike_length", "ore_blocks"), largePath, warnings);
+				large = new EmeraldPocketSettings.LargeMine(number(spec, "chance", largePath),
+						integerRange(spec, "zones", largePath), integerRange(spec, "strike_length", largePath),
+						integerRange(spec, "ore_blocks", largePath));
+			}
+			return new EmeraldPocketSettings(integerRange(shape, "pockets", path),
+					integerRange(shape, "strike_length", path), integerRange(shape, "ore_blocks", path),
+					integerRange(shape, "surface_cover", path), rich, bool(shape, "vein_trace", false, path), large);
+		}
+
 		if ("lapis_lens".equals(type)) {
 			unknownKeys(shape, keys("type", "lenses", "strike_length", "width", "thickness",
 					"surface_cover", "legacy_selection_scale"), path + " shape", warnings);

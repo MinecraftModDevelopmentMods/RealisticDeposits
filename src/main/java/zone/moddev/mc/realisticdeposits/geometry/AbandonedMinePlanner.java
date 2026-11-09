@@ -120,7 +120,7 @@ public final class AbandonedMinePlanner {
 				access.entrance(), landing, blocks));
 	}
 
-	private static boolean sealClosedPockets(Map<Long, MineBlock> blocks, MinePoint entrance, MinePoint landing) {
+	static boolean sealClosedPockets(Map<Long, MineBlock> blocks, MinePoint entrance, MinePoint landing) {
 		Set<Long> connected = new LinkedHashSet<>();
 		ArrayDeque<MinePoint> queue = new ArrayDeque<>();
 		queue.add(entrance);
