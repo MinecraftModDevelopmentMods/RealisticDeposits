@@ -33,7 +33,7 @@ independently. These are test settings, not new gameplay defaults.
 
 ## Coalfield checks
 
-Coalfield checks use the published OreSpawn 4.1.5.110021 dependency and its
+Coalfield checks use the published OreSpawn 4.1.6.110021 dependency and its
 official checksum. The exact-host API is included in that release; a local
 OreSpawn build is not needed.
 
@@ -121,6 +121,21 @@ of completed fixtures without changing their source worlds.
 
 See [the lapis walkthrough](LAPIS_TESTING.md) for the isolated Eclipse launch.
 
+## Emerald checks
+
+`prepareEmeraldQualification` builds the separate test-only probe.
+`emerald_110.py` checks the exact packaged jar on disposable local servers:
+ordinary-ore controls, native drops, stone and schist hosts, saved source
+switches, late chunks and working obstructions. `emerald_upgrade_110.py`
+checks copies of a completed Lapis mine against an old-build control;
+pass the current public engine with `--orespawn`, leaving the archived
+engine in the source fixture.
+Ordinary ore comparisons keep the saved rules and Forge gate identical and
+report realised counts separately. Legacy OreSpawn shares its decoration
+random stream with the added rule, so individual ordinary ore coordinates
+aren't required to match in a fresh chunk.
+See the [emerald walkthrough](EMERALD_TESTING.md) for fixed-seed coordinates.
+
 ## Running the policy matrix
 
 For the imported-profile editor check, use the separate
@@ -142,7 +157,7 @@ Then run `python tools/qualification/qualify_110.py` with these arguments:
 | `--java` | Java 8 executable |
 | `--runtime` | An official Forge 1.10.2-12.18.3.2511 server installation, including libraries and an already accepted EULA |
 | `--mod` | The built Realistic Deposits release jar |
-| `--orespawn` | Public OreSpawn 4.1.5.110021; its official checksum is checked |
+| `--orespawn` | Public OreSpawn 4.1.6.110021; its official checksum is checked |
 | `--probe` | `build/qualification/policy-probe.jar` |
 | `--output` | A new disposable evidence directory, preferably under an ignored `run-*` folder |
 | `--jobs` | Concurrent servers; defaults to two |

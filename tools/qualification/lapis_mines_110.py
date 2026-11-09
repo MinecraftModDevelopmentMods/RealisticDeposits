@@ -74,7 +74,7 @@ def main():
             properties = properties.replace(";1;decoration", ";1;")
         (root / "server.properties").write_text(properties, encoding="utf-8", newline="\n")
 
-        for name in ("vanilla", "coal", "diamonds", "gold", "lapis"):
+        for name in ("vanilla", "coal", "diamonds", "gold", "lapis", "emerald"):
             location = ROOT / (f"run/config/realisticdeposits/deposits/{name}.json" if case == "regular"
                                else f"src/main/resources/assets/realisticdeposits/defaults/{name}.json")
             catalogue = json.loads(location.read_text())

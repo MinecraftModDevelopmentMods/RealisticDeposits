@@ -35,7 +35,7 @@ class LapisChecksTest(unittest.TestCase):
 
     def test_surveys_require_matching_public_inputs(self):
         record = {"RealisticDeposits-0.5.0.110021.jar": "A" * 64,
-                  "OreSpawn-4.1.5.110021.jar": ORESPAWN_SHA256, "lapis-probe.jar": "B" * 64}
+                  "OreSpawn-4.1.6.110021.jar": ORESPAWN_SHA256, "lapis-probe.jar": "B" * 64}
         self.assertEqual("A" * 64, balance.checked_inputs([record, record]))
         for key in record:
             changed = copy.deepcopy(record)

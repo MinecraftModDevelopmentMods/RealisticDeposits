@@ -7,17 +7,17 @@
 
 Realistic Deposits makes finding ore a reason to explore, then build a proper
 mine. Rare iron districts, layered coalfields, diamond pipes, gold veins and
-lapis lenses give you deposits worth returning to, with old workings leading
-into some of them.
+lapis lenses and emerald pockets give you deposits worth returning to, with
+old workings leading into some of them.
 Small pockets of diamond- and gold-bearing river gravel offer another way to prospect.
 It runs on [MMD OreSpawn](https://github.com/MinecraftModDevelopmentMods/OreSpawn).
 
 The project starts with Minecraft 1.10.2 and is intended to follow the
 maintained OreSpawn branches across Forge and NeoForge.
 
-Version 0.5.0.110021 is an alpha for Minecraft 1.10.2. It adds rare, compact
-lapis lenses and short abandoned workings, with 15% of ordinary background
-lapis retained by default. Try a fresh world to see the new rules: existing
+Version 0.6.0.110021 is a local candidate for Minecraft 1.10.2. It adds rare
+emerald pockets and occasional abandoned workings without reducing ordinary
+emerald generation. Try a fresh world to see the new rules: existing
 worlds keep their settings, generated chunks and saved mine layouts. Back up
 important worlds before updating.
 
@@ -44,15 +44,21 @@ important worlds before updating.
 - Compact lapis lenses with richer pockets and short workings. Natural marble
   hosts them when Mineralogy strata are active; ordinary stone is used otherwise.
   See [lapis deposits](docs/LAPIS.md).
+- Rare emerald pockets along pale underground traces, with occasional larger
+  finds whose abandoned galleries can reach more than one pocket. Large
+  mines have several separated zones to prospect beyond the starter workings. They fit
+  natural schist in active Mineralogy strata, or natural vanilla stone
+  variants otherwise.
+  See [emerald deposits](docs/EMERALDS.md).
 - Configurable support for vanilla and modded resources.
 - Safe generation that avoids air, fluids, bedrock, block entities, structures,
   and undeclared host blocks.
-- Live reload for iron and coal geometry. Lapis, gold, diamond and other structural
+- Live reload for iron and coal geometry. Emerald, lapis, gold, diamond and other structural
   changes wait until restart.
 - An entry in both Forge's Mods configuration and OreSpawn's World Settings.
 - Abandoned workings with sloping, stepped entrances and short underground galleries.
   New defaults attempt them at every iron formation, coalfield, diamond pipe
-  and goldfield, plus each lapis district, where safe. River placers stay untouched.
+  and goldfield, plus each lapis or emerald district, where safe. River placers stay untouched.
   See the [mine settings](docs/ABANDONED_MINES.md).
 
 Coalfields can already use Mineralogy's existing shale, siltstone and
@@ -65,7 +71,7 @@ The current branch requires:
 
 - Minecraft 1.10.2;
 - Forge 12.18.3.2511 or a compatible newer Forge 12 build;
-- [MMD OreSpawn 4.1.5.110021](https://www.curseforge.com/minecraft/mc-mods/mmd-orespawn/files/9397156)
+- [MMD OreSpawn 4.1.6.110021](https://www.curseforge.com/minecraft/mc-mods/mmd-orespawn/files/9518063)
   or a newer compatible 1.10.2 release, but earlier than OreSpawn 5;
 - Java 8 to run Minecraft.
 
@@ -83,6 +89,7 @@ config/realisticdeposits/deposits/coal.json
 config/realisticdeposits/deposits/diamonds.json
 config/realisticdeposits/deposits/gold.json
 config/realisticdeposits/deposits/lapis.json
+config/realisticdeposits/deposits/emerald.json
 ```
 
 The supplied definition describes one rare iron district using a 640–960 block
@@ -160,7 +167,7 @@ formations:
 
 `reload` requires operator permission. For iron and coal it applies `enabled`,
 selection, shape, height, geome, family, and alignment changes. Diamond geometry
-and source links require a restart, as do gold and lapis settings. Resource,
+and source links require a restart, as do gold, lapis and emerald settings. Resource,
 dimension, host, biome-filter, interaction-policy, scale, added, and removed
 definition changes are structural and take effect after restart. Abandoned-mine
 settings are also captured with the world's deposit definition. New provider
@@ -175,9 +182,9 @@ World Settings screen.
 The Gradle build runs on Java 17 and compiles the mod for Java 8 using the
 configured toolchain. ForgeGradle's Minecraft preparation utility uses Java 25.
 
-OreSpawn 4.1.5.110021 is downloaded from Curse Maven, checked against its
+OreSpawn 4.1.6.110021 is downloaded from Curse Maven, checked against its
 official checksum and mapped for development automatically. The exact dependency
-is `curse.maven:mmd-orespawn-245586:9397156`. No sibling checkout, local jar or
+is `curse.maven:mmd-orespawn-245586:9518063`. No sibling checkout, local jar or
 `local.properties` file is needed.
 
 An optional local-candidate override is still available for development, but it
@@ -205,6 +212,7 @@ separate Eclipse profile and disposable saves for the new workings.
 For coalfields, use `prepareCoalMeasuresManual` and the
 [coal-testing walkthrough](tools/qualification/COAL_TESTING.md).
 For lapis, see the [lapis walkthrough](tools/qualification/LAPIS_TESTING.md).
+For emeralds, see the [emerald walkthrough](tools/qualification/EMERALD_TESTING.md).
 
 Hosted CI/CD keeps to builds, unit/helper tests, static checks, reproducible
 jars, dependency hashes and ordinary Eclipse launch definitions. It does not

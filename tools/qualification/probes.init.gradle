@@ -1,5 +1,24 @@
 gradle.afterProject { project, state ->
     if (project == project.rootProject && state.failure == null) {
+        def emeraldInput = project.tasks.register('emeraldQualificationProbeInput', Jar) {
+            dependsOn project.tasks.named('testClasses')
+            from project.sourceSets.test.output.classesDirs
+            include 'zone/moddev/mc/realisticdeposits/generation/EmeraldRuntimeProbe*.class'
+            include 'zone/moddev/mc/realisticdeposits/generation/EmeraldClientProbe*.class'
+            include 'zone/moddev/mc/realisticdeposits/geometry/EmeraldWalkProbe*.class'
+            archiveFileName = 'emerald-probe-deobf.jar'
+            destinationDirectory = project.layout.buildDirectory.dir('qualification')
+        }
+        def emeraldPackaged = project.renamer.classes(emeraldInput) {
+            map.from project.minecraft.dependency.toSrgFile
+            output = project.layout.buildDirectory.file('qualification/emerald-probe.jar')
+        }
+        project.tasks.register('prepareEmeraldQualification') {
+            group = 'verification'
+            description = 'Builds the isolated local emerald qualification probe.'
+            dependsOn emeraldPackaged
+        }
+
         def lapisInput = project.tasks.register('lapisQualificationProbeInput', Jar) {
             dependsOn project.tasks.named('testClasses')
             from project.sourceSets.test.output.classesDirs

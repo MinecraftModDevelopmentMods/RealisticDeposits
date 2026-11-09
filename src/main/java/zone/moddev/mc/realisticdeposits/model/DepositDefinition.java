@@ -113,6 +113,11 @@ public final class DepositDefinition {
 		this.salt = salt;
 		this.shape = Objects.requireNonNull(seam, "shape");
 		this.abandonedMine = Objects.requireNonNull(abandonedMine, "abandonedMine");
+		if (isEmerald() && (!"minecraft:emerald_ore".equals(this.resource)
+				|| !this.dimensions.equals(java.util.Collections.singleton("minecraft:overworld"))
+				|| alignment != AlignmentMode.GEOME_ALIGNED)) {
+			throw new IllegalArgumentException("Emerald pockets require geome-aligned Overworld emerald ore: " + id);
+		}
 		if ((isDiamondPlacer() || isGoldPlacer()) && abandonedMine.enabled()) {
 			throw new IllegalArgumentException("River placers do not support underground workings: " + id);
 		}
@@ -184,6 +189,8 @@ public final class DepositDefinition {
 	public boolean isGold() { return isGoldLode() || isGoldPlacer(); }
 	public boolean isLapis() { return shape instanceof LapisLensSettings; }
 	public LapisLensSettings lapis() { return (LapisLensSettings) shape; }
+	public boolean isEmerald() { return shape instanceof EmeraldPocketSettings; }
+	public EmeraldPocketSettings emerald() { return (EmeraldPocketSettings) shape; }
 	public GoldLodeSettings lode() { return (GoldLodeSettings) shape; }
 	public GoldPlacerSettings goldPlacer() { return (GoldPlacerSettings) shape; }
 	public DiamondPipeSettings pipe() { return (DiamondPipeSettings) shape; }
@@ -207,7 +214,8 @@ public final class DepositDefinition {
 				+ (isCoal() ? "|shape:coal_measures" : "")
 				+ (isDiamond() ? "|diamond:" + toJson() : "")
 				+ (isGold() ? "|gold:" + toJson() : "")
-				+ (isLapis() ? "|lapis:" + toJson() : "");
+				+ (isLapis() ? "|lapis:" + toJson() : "")
+				+ (isEmerald() ? "|emerald:" + toJson() : "");
 	}
 
 	/** Deterministic schema-1 representation embedded in OreSpawn pattern settings. */

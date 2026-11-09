@@ -13,10 +13,10 @@ class ReleaseContractTest(unittest.TestCase):
         properties = dict(line.split("=", 1) for line in
                           (ROOT / "gradle.properties").read_text().splitlines()
                           if "=" in line and not line.startswith("#"))
-        self.assertEqual("0.5.0.110021", properties["mod_version"])
-        self.assertEqual("4.1.5.110021", properties["orespawn_version"])
-        self.assertEqual("9397156", properties["orespawn_curse_file_id"])
-        self.assertEqual("1E580EBB8D93B1256E2E81C7D0D815DEAAAC58A028CB5A77A52773B62048E010",
+        self.assertEqual("0.6.0.110021", properties["mod_version"])
+        self.assertEqual("4.1.6.110021", properties["orespawn_version"])
+        self.assertEqual("9518063", properties["orespawn_curse_file_id"])
+        self.assertEqual("05DB7CBFAADC815D6A713DACDFB9F0647BCED49CCFC357FB2FF010E95BD1379F",
                          properties["orespawn_sha256"])
         self.assertEqual("1689703", properties["curseforge_project_id"])
 
@@ -51,6 +51,23 @@ class ReleaseContractTest(unittest.TestCase):
         workflow = (ROOT / ".github/workflows/codeql-analysis.yml").read_text()
         self.assertIn("build-mode: manual", workflow)
         self.assertIn("--no-build-cache --rerun-tasks", workflow)
+
+    def test_curseforge_only_publication_still_requires_confirmation_and_verified_build(self):
+        workflow = (ROOT / ".github/workflows/deploy-release.yml").read_text()
+        for job in ("create_release_tag", "publish_maven", "publish_github"):
+            definition = workflow.split(f"  {job}:\n", 1)[1].split("    needs:", 1)[0]
+            self.assertIn("inputs.mode == 'publish' && inputs.publication_scope == 'all'", definition)
+        curseforge = workflow.split("  publish_curseforge:\n", 1)[1].split("  publish_github:\n", 1)[0]
+        for guard in ("!cancelled()", "inputs.mode == 'publish'",
+                      "needs.preflight.result == 'success'", "needs.build.result == 'success'",
+                      "needs.release_confirmation.result == 'success'",
+                      "inputs.publication_scope == 'curseforge-only' && needs.publish_maven.result == 'skipped'",
+                      "inputs.publication_scope == 'all' && needs.publish_maven.result == 'success'"):
+            self.assertIn(guard, curseforge)
+        confirmation = workflow.split("  release_confirmation:\n", 1)[1].split("  create_release_tag:\n", 1)[0]
+        self.assertIn('required=(CURSEFORGE_TOKEN)', confirmation)
+        self.assertIn('! "$EXPECTED_CHECKSUMS_SHA256" =~ ^[0-9a-fA-F]{64}$', confirmation)
+        self.assertIn("steps.curseforge.outputs.curseforge-version", curseforge)
 
     def test_verified_manifest_is_checked_before_publication(self):
         workflow = (ROOT / ".github/workflows/deploy-release.yml").read_text()

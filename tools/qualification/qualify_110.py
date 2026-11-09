@@ -12,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 
-ORESPAWN_SHA256 = "1E580EBB8D93B1256E2E81C7D0D815DEAAAC58A028CB5A77A52773B62048E010"
+ORESPAWN_SHA256 = "05DB7CBFAADC815D6A713DACDFB9F0647BCED49CCFC357FB2FF010E95BD1379F"
 FORGE_JAR = "forge-1.10.2-12.18.3.2511-universal.jar"
 POLICIES = ("additive", "hybrid-default", "hybrid-15", "replacement")
 ORIGINS = ("native", "os1", "os3", "existing-override")
@@ -165,6 +165,10 @@ def prepare(args, name, origin, policy, managed, port, bootstrap=False):
                        .read_text(encoding="utf-8"))
     lapis["deposits"][0]["enabled"] = False
     write_json(root / "config/realisticdeposits/deposits/lapis.json", lapis)
+    emerald = json.loads((Path(__file__).parents[2] / "src/main/resources/assets/realisticdeposits/defaults/emerald.json")
+                         .read_text(encoding="utf-8"))
+    emerald["deposits"][0]["enabled"] = False
+    write_json(root / "config/realisticdeposits/deposits/emerald.json", emerald)
     sources = {}
 
     if origin != "native":
@@ -283,7 +287,7 @@ def check_profile(report, origin, policy, managed):
     if default_coal is not None:
         assert default_coal["enabled"] is False, "The unrelated default coalfield must remain disabled"
     for name in ("overworld_diamond_pipes", "overworld_diamond_placers", "overworld_gold_lodes", "overworld_gold_placers",
-                 "overworld_lapis_lenses"):
+                 "overworld_lapis_lenses", "overworld_emerald_pockets"):
         default = owned.pop("realisticdeposits:deposit/realisticdeposits/" + name, None)
         if default is not None:
             assert default["enabled"] is False, "An unrelated default deposit rule became active"

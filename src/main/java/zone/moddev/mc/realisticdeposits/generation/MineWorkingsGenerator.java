@@ -50,9 +50,12 @@ import zone.moddev.mc.orespawn.api.OreSpawnApi;
 import zone.moddev.mc.realisticdeposits.geometry.AbandonedMinePlan;
 import zone.moddev.mc.realisticdeposits.geometry.AbandonedMinePlanner;
 import zone.moddev.mc.realisticdeposits.geometry.BlockBounds;
+import zone.moddev.mc.realisticdeposits.geometry.EmeraldDistrict;
+import zone.moddev.mc.realisticdeposits.geometry.EmeraldMinePlanner;
 import zone.moddev.mc.realisticdeposits.geometry.MineBlock;
 import zone.moddev.mc.realisticdeposits.geometry.MinePoint;
 import zone.moddev.mc.realisticdeposits.geometry.MineableDepositBody;
+import zone.moddev.mc.realisticdeposits.geometry.RichEmeraldMinePlanner;
 import zone.moddev.mc.realisticdeposits.model.DepositDefinition;
 
 /** Builds abandoned workings after OreSpawn, without owning or replacing its ore pass. */
@@ -70,9 +73,15 @@ public final class MineWorkingsGenerator implements IWorldGenerator {
 		if (!"minecraft:overworld".equals(context.dimension().toString())) return;
 		if (!AbandonedMinePlanner.selected(body, definition.abandonedMine())) return;
 
-		MinePoint landing = AbandonedMinePlanner.landing(body);
-		if (Math.abs((long) (context.chunkX() << 4) - landing.x()) > 96L
-				|| Math.abs((long) (context.chunkZ() << 4) - landing.z()) > 96L) return;
+		if (body instanceof EmeraldDistrict && ((EmeraldDistrict) body).large()) {
+			// A large deposit can start its workings in any zone, not just
+			// within 96 blocks of the first pocket. Only ore chunks can qualify.
+			if (((EmeraldDistrict) body).oreInChunk(context.chunkX(), context.chunkZ()).isEmpty()) return;
+		} else {
+			MinePoint landing = AbandonedMinePlanner.landing(body);
+			if (Math.abs((long) (context.chunkX() << 4) - landing.x()) > 96L
+					|| Math.abs((long) (context.chunkZ() << 4) - landing.z()) > 96L) return;
+		}
 
 		String chunk = queueKey(context.worldSeed(), context.dimension().toString(), context.chunkX(), context.chunkZ());
 		List<Candidate> candidates = PENDING.computeIfAbsent(chunk, ignored -> new ArrayList<>());
@@ -96,6 +105,7 @@ public final class MineWorkingsGenerator implements IWorldGenerator {
 	@SubscribeEvent
 	public void worldUnloaded(WorldEvent.Unload event) {
 		SESSIONS.remove(event.getWorld());
+		if (event.getWorld() instanceof WorldServer) EmeraldVeinTrace.unload((WorldServer) event.getWorld());
 		String prefix = event.getWorld().getSeed() + "/";
 		PENDING.keySet().removeIf(key -> key.startsWith(prefix));
 	}
@@ -120,6 +130,8 @@ public final class MineWorkingsGenerator implements IWorldGenerator {
 		if (!(baseWorld instanceof WorldServer) || baseWorld.provider.getDimension() != 0) return;
 
 		WorldServer world = (WorldServer) baseWorld;
+		long chunkKey = MinePoint.chunkKey(chunkX, chunkZ);
+		List<EmeraldVeinTrace.Slice> traces = EmeraldVeinTrace.take(world, chunkKey);
 		Session session = SESSIONS.get(world);
 		if (session == null) {
 			// Spawn chunks can populate before Forge posts WorldEvent.Load.
@@ -128,22 +140,25 @@ public final class MineWorkingsGenerator implements IWorldGenerator {
 			SESSIONS.put(world, session);
 		}
 
-		long chunkKey = MinePoint.chunkKey(chunkX, chunkZ);
 		boolean alreadyVisited = !session.visited.add(chunkKey);
 		if (session.existing == null || alreadyVisited) return;
 		boolean pendingSection = session.data != null && !session.data.unbuiltMinesInChunk(chunkX, chunkZ).isEmpty();
 		if (session.existing.contains(chunkX, chunkZ)
 				&& (!pendingSection || session.loadedPopulated.contains(chunkKey))) return;
-		if (candidates == null && session.data == null) return;
+		if (candidates == null && session.data == null && traces.isEmpty()) return;
 
 		Chunk chunk = world.getChunkProvider().getLoadedChunk(chunkX, chunkZ);
 		if (chunk == null) throw new IllegalStateException("The mine pass must only use its current loaded chunk");
 		try {
+			if (candidates == null && session.data == null) {
+				EmeraldVeinTrace.place(world, chunk, traces);
+				return;
+			}
 			if (session.data == null) session.data = MineWorldData.get(world);
 			MineWorldData data = session.data;
 			if (candidates != null) {
 				for (Candidate candidate : candidates) {
-					if (!data.decided(candidate.key)) decide(candidate, data, session, world, generator, chunkKey);
+					if (!data.decided(candidate.key)) decide(candidate, data, session, world, generator, chunk);
 				}
 			}
 
@@ -151,6 +166,9 @@ public final class MineWorkingsGenerator implements IWorldGenerator {
 			for (String key : data.unbuiltMinesInChunk(chunkX, chunkZ)) {
 				place(data.plan(key), data.definition(key), chunk, world, session);
 				data.sectionHandled(key, chunkX, chunkZ);
+			}
+			if (!traces.isEmpty() && !session.existing.contains(chunkX, chunkZ)) {
+				EmeraldVeinTrace.place(world, chunk, traces);
 			}
 		} catch (RuntimeException failure) {
 			if (!session.warned) {
@@ -161,7 +179,12 @@ public final class MineWorkingsGenerator implements IWorldGenerator {
 	}
 
 	private static void decide(Candidate candidate, MineWorldData data, Session session,
-			WorldServer world, IChunkGenerator generator, long currentChunk) {
+			WorldServer world, IChunkGenerator generator, Chunk chunk) {
+		long currentChunk = MinePoint.chunkKey(chunk.xPosition, chunk.zPosition);
+		if (candidate.body instanceof EmeraldDistrict) {
+			decideEmerald(candidate, data, session, world, generator, chunk, currentChunk);
+			return;
+		}
 		MineTerrainSampler terrain = new MineTerrainSampler(world, generator);
 		Optional<AbandonedMinePlan> proposed = AbandonedMinePlanner.plan(candidate.body,
 				candidate.definition.abandonedMine(), terrain::naturalSurfaceY);
@@ -188,6 +211,117 @@ public final class MineWorkingsGenerator implements IWorldGenerator {
 			LOG.info("Planned abandoned workings for '{}': surface={}, seam={}, blocks={}",
 					candidate.key, plan.entrance(), plan.landing(), plan.blocks().size());
 		}
+	}
+
+	private static void decideEmerald(Candidate candidate, MineWorldData data, Session session,
+			WorldServer world, IChunkGenerator generator, Chunk chunk, long currentChunk) {
+		EmeraldDistrict body = (EmeraldDistrict) candidate.body;
+		boolean linked = body.linkedWorkings(candidate.definition);
+		AbandonedMinePlan plan = session.emeraldPlans.get(candidate.key);
+		if (plan == null) {
+			MineTerrainSampler terrain = new MineTerrainSampler(world, generator);
+			java.util.function.Predicate<AbandonedMinePlan> safe =
+					route -> safeEmeraldTerrain(route, terrain, candidate.definition, world);
+			Optional<AbandonedMinePlan> proposed = linked
+					? RichEmeraldMinePlanner.plan(body, candidate.definition.abandonedMine(),
+							(x, z) -> terrain.surfaceY(new MinePoint(x, 0, z)), safe)
+					: EmeraldMinePlanner.plan(body, candidate.definition.abandonedMine(), terrain::naturalSurfaceY, safe);
+			if (!proposed.isPresent()) {
+				data.reject(candidate.key, linked ? "No safe access to multiple emerald pockets" : "No safe single-chunk access");
+				return;
+			}
+			plan = proposed.get();
+			if (session.emeraldPlans.size() >= 64) {
+				session.emeraldPlans.remove(session.emeraldPlans.keySet().iterator().next());
+			}
+			session.emeraldPlans.put(candidate.key, plan);
+		}
+
+		BlockBounds bounds = plan.bounds();
+		if (session.existing.intersects(bounds) || crossesVisited(plan, session, currentChunk)) {
+			data.reject(candidate.key, "Existing terrain");
+		} else if (plan.cellsInChunk(chunk.xPosition, chunk.zPosition).isEmpty()) {
+			// Do not expose even a doorway until its entire route can be checked in the
+			// one fresh, populated chunk. No neighbouring chunks are loaded or edited.
+			return;
+		} else {
+			String reason = emeraldRejection(body, plan, candidate.definition, chunk, world, session, data, true);
+			if (reason != null && body.large() && !"World border".equals(reason)) {
+				MineTerrainSampler terrain = new MineTerrainSampler(world, generator);
+				Optional<AbandonedMinePlan> alternative = RichEmeraldMinePlanner.planInChunk(body,
+						candidate.definition.abandonedMine(), chunk.xPosition, chunk.zPosition,
+						(x, z) -> terrain.surfaceY(new MinePoint(x, 0, z)),
+						route -> !session.existing.intersects(route.bounds()) && !crossesVisited(route, session, currentChunk)
+								&& safeEmeraldTerrain(route, terrain, candidate.definition, world)
+								&& emeraldRejection(body, route, candidate.definition, chunk, world, session, data, false) == null);
+				if (alternative.isPresent()) {
+					LOG.info("Rerouted large emerald starter workings for '{}' in the same fresh chunk: {}",
+							candidate.key, reason);
+					plan = alternative.get();
+					reason = null;
+				}
+			}
+			if (reason != null) {
+				data.reject(candidate.key, reason);
+			} else {
+				data.accept(candidate.key, plan, candidate.definition);
+				writeSection(plan.cellsInChunk(chunk.xPosition, chunk.zPosition), chunk, world);
+				data.sectionHandled(candidate.key, chunk.xPosition, chunk.zPosition);
+				LOG.info(linked ? "Built linked emerald workings for '{}': surface={}, seam={}, blocks={}"
+						: "Built emerald workings for '{}': surface={}, seam={}, blocks={}",
+						candidate.key, plan.entrance(), plan.landing(), plan.blocks().size());
+			}
+		}
+		session.emeraldPlans.remove(candidate.key);
+	}
+
+	private static boolean safeEmeraldTerrain(AbandonedMinePlan route, MineTerrainSampler terrain,
+			DepositDefinition definition, WorldServer world) {
+		return terrain.surfaceY(route.entrance()) == route.entrance().y() && terrain.dry(route)
+				&& terrain.covered(route) && biomesAllowed(route, definition, world);
+	}
+
+	private static String emeraldRejection(EmeraldDistrict body, AbandonedMinePlan plan, DepositDefinition definition,
+			Chunk chunk, WorldServer world, Session session, MineWorldData data, boolean report) {
+		BlockBounds bounds = plan.bounds();
+		if (!world.getWorldBorder().contains(new BlockPos(bounds.minimumX(), 64, bounds.minimumZ()))
+				|| !world.getWorldBorder().contains(new BlockPos(bounds.maximumX(), 64, bounds.maximumZ()))) return "World border";
+		if (intersectsStructure(bounds, world)) return "Another structure";
+		if (overlapsSaved(plan, data)) return "Another abandoned mine";
+		if (!canPlace(plan.cellsInChunk(chunk.xPosition, chunk.zPosition), definition, chunk, world, session, report)) {
+			return "Unsafe blocks in the approach";
+		}
+		if (body.linkedWorkings(definition)) {
+			if (RichEmeraldMinePlanner.exposedPockets(body, plan, ore ->
+					(ore.x() >> 4) == chunk.xPosition && (ore.z() >> 4) == chunk.zPosition
+					&& chunk.getBlockState(ore.x() & 15, ore.y(), ore.z() & 15).getBlock() == Blocks.EMERALD_ORE) < 2) {
+				return "Fewer than two exposed emerald pockets";
+			}
+		} else if (!hasEmeraldFace(body, plan, chunk)) return "No exposed emerald face";
+		return null;
+	}
+
+	private static boolean hasEmeraldFace(EmeraldDistrict body, AbandonedMinePlan plan, Chunk chunk) {
+		MinePoint landing = plan.landing();
+		for (MinePoint ore : body.ore()) {
+			int dx = ore.x() - landing.x(), dz = ore.z() - landing.z();
+			int length = Math.abs(dx) + Math.abs(dz);
+			if ((ore.x() >> 4) != chunk.xPosition || (ore.z() >> 4) != chunk.zPosition
+					|| ore.y() != landing.y() + 1 || (dx != 0 && dz != 0) || length < 6 || length > 12
+					|| chunk.getBlockState(ore.x() & 15, ore.y(), ore.z() & 15).getBlock() != Blocks.EMERALD_ORE) continue;
+			boolean exposed = true;
+			for (int step = 0; step < length && exposed; step++) {
+				int x = landing.x() + step * Integer.signum(dx), z = landing.z() + step * Integer.signum(dz);
+				exposed = plan.blocks().get(new MinePoint(x, ore.y(), z).packed()) == MineBlock.AIR
+						&& plan.blocks().get(new MinePoint(x, ore.y() - 1, z).packed()) == MineBlock.AIR;
+			}
+			if (exposed) return true;
+		}
+		return false;
+	}
+
+	private static boolean overlapsSaved(AbandonedMinePlan plan, MineWorldData data) {
+		return data.plans().values().stream().anyMatch(other -> overlaps(plan.bounds(), other.bounds()));
 	}
 
 	private static boolean crossesVisited(AbandonedMinePlan plan, Session session, long current) {
@@ -264,7 +398,16 @@ public final class MineWorkingsGenerator implements IWorldGenerator {
 	private static void place(AbandonedMinePlan plan, DepositDefinition definition,
 			Chunk chunk, WorldServer world, Session session) {
 		List<AbandonedMinePlan.Cell> cells = plan.cellsInChunk(chunk.xPosition, chunk.zPosition);
-		if (cells.isEmpty()) return;
+		if (!cells.isEmpty() && canPlace(cells, definition, chunk, world, session)) writeSection(cells, chunk, world);
+	}
+
+	private static boolean canPlace(List<AbandonedMinePlan.Cell> cells, DepositDefinition definition,
+			Chunk chunk, WorldServer world, Session session) {
+		return canPlace(cells, definition, chunk, world, session, true);
+	}
+
+	private static boolean canPlace(List<AbandonedMinePlan.Cell> cells, DepositDefinition definition,
+			Chunk chunk, WorldServer world, Session session, boolean report) {
 		String hostKey = definition == null ? "vanilla" : definition.id();
 		Set<Block> hosts = session.hosts.computeIfAbsent(hostKey, ignored -> naturalHosts(definition, world));
 		BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
@@ -273,11 +416,12 @@ public final class MineWorkingsGenerator implements IWorldGenerator {
 			MinePoint point = cell.point();
 			cursor.setPos(point.x(), point.y(), point.z());
 			IBlockState current = chunk.getBlockState(cursor);
-			if (current.getMaterial().isLiquid() || current.getBlock().hasTileEntity(current)
+			if ((definition != null && definition.isEmerald() && current.getBlock() == Blocks.EMERALD_ORE)
+					|| current.getMaterial().isLiquid() || current.getBlock().hasTileEntity(current)
 					|| current.getBlock() != Blocks.AIR && !hosts.contains(current.getBlock())) {
-				LOG.info("Left abandoned workings sealed in chunk {},{}: {} at {} is not safe to replace.",
+				if (report) LOG.info("Left abandoned workings sealed in chunk {},{}: {} at {} is not safe to replace.",
 						chunk.xPosition, chunk.zPosition, current, point);
-				return;
+				return false;
 			}
 
 			// A newly generated lake or another mod's structure is allowed to block
@@ -290,16 +434,19 @@ public final class MineWorkingsGenerator implements IWorldGenerator {
 						if ((x >> 4) != chunk.xPosition || (z >> 4) != chunk.zPosition) continue;
 						for (int dy = -1; dy <= 1; dy++) {
 							if (chunk.getBlockState(x & 15, point.y() + dy, z & 15).getMaterial().isLiquid()) {
-								LOG.info("Left abandoned workings sealed in chunk {},{} to avoid opening a liquid at {},{},{}.",
+								if (report) LOG.info("Left abandoned workings sealed in chunk {},{} to avoid opening a liquid at {},{},{}.",
 										chunk.xPosition, chunk.zPosition, x, point.y() + dy, z);
-								return;
+								return false;
 							}
 						}
 					}
 				}
 			}
 		}
+		return true;
+	}
 
+	private static void writeSection(List<AbandonedMinePlan.Cell> cells, Chunk chunk, WorldServer world) {
 		ExtendedBlockStorage[] sections = chunk.getBlockStorageArray();
 		for (AbandonedMinePlan.Cell cell : cells) {
 			MinePoint point = cell.point();
@@ -401,6 +548,7 @@ public final class MineWorkingsGenerator implements IWorldGenerator {
 			this.definition = definition;
 			this.body = body;
 		}
+
 	}
 
 	private static final class Session {
@@ -408,6 +556,7 @@ public final class MineWorkingsGenerator implements IWorldGenerator {
 		private final Set<Long> visited = new HashSet<>();
 		private final Set<Long> loadedPopulated = new HashSet<>();
 		private final Map<String, Set<Block>> hosts = new HashMap<>();
+		private final Map<String, AbandonedMinePlan> emeraldPlans = new LinkedHashMap<>();
 		private boolean warned;
 		private MineWorldData data;
 

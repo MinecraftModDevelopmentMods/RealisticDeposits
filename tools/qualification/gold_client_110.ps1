@@ -76,7 +76,7 @@ New-Item -ItemType Directory -Path $nativeDir -Force | Out-Null
 Copy-Item -LiteralPath $orespawnJar -Destination (Join-Path $runDir 'mods')
 Copy-Item -LiteralPath $realisticDepositsJar -Destination (Join-Path $runDir 'mods')
 Copy-Item -LiteralPath $clientProbe -Destination (Join-Path $runDir 'mods')
-$expectedOreSpawn = '1E580EBB8D93B1256E2E81C7D0D815DEAAAC58A028CB5A77A52773B62048E010'
+$expectedOreSpawn = '05DB7CBFAADC815D6A713DACDFB9F0647BCED49CCFC357FB2FF010E95BD1379F'
 if ($LocalOreSpawnSha256) {
     if ($LocalOreSpawnSha256 -cnotmatch '^[0-9A-Fa-f]{64}$') { throw 'Supply the complete candidate SHA-256' }
     $expectedOreSpawn = $LocalOreSpawnSha256.ToUpperInvariant()

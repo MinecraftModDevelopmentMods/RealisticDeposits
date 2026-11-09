@@ -52,7 +52,7 @@ def same(left, right):
 def configure(root, case):
     natural = case in ("normal", "mineralogy", "inactive", "legacy")
 
-    for name in ("vanilla", "coal", "diamonds", "gold", "lapis"):
+    for name in ("vanilla", "coal", "diamonds", "gold", "lapis", "emerald"):
         catalogue = json.loads((ROOT / f"src/main/resources/assets/realisticdeposits/defaults/{name}.json").read_text())
         for definition in catalogue["deposits"]:
             definition["enabled"] = name == "lapis" and case not in ("off", "world-enable")

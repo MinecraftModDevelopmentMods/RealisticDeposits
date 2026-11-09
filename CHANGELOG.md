@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.6.0.110021
+
+Beta for Minecraft 1.10.2.
+
+- Require MMD OreSpawn 4.1.6.110021 or newer in the 4.x line.
+- Add rare emerald pockets in mountain-belt geology, with natural schist
+  when Mineralogy strata are active and natural vanilla stone otherwise.
+- Keep all ordinary emerald generation by default, with vanilla drops,
+  Fortune and Silk Touch.
+- Small emerald finds contain 25–60 planned ore blocks. Rare larger finds
+  can contain 70–120 across more pockets. A thin pale-rock trace helps you
+  follow the trend between pockets without turning it into an ore seam.
+- Keep a single short crosscut at small finds. Larger finds can have
+  linked galleries leading to multiple pockets. Only build an entrance
+  where the whole route is safe, without cutting into the emeralds.
+- Add exceptional emerald mines with 260–420 planned ore blocks in four or
+  five zones. Starter workings can expose two pockets, with pale rock traces
+  to follow into unworked zones. Small and rich finds keep their previous layouts.
+  Existing worlds and mine layouts are unchanged.
+
 ## 0.5.0.110021
 
 Alpha for Minecraft 1.10.2.

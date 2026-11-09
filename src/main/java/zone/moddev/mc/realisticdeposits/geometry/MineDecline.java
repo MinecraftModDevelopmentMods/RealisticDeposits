@@ -64,8 +64,40 @@ public final class MineDecline {
 		return steps;
 	}
 
+	/** Compact four-turn flights for a mine that must be carved in one chunk. */
+	static MineDecline compact(MinePoint landing, int surfaceY, int forward, int turn, int span) {
+		int x = landing.x(), y = landing.y(), z = landing.z();
+		List<Step> steps = new ArrayList<>();
+		steps.add(new Step(landing, forward, false));
+		while (y < surfaceY) {
+			// Flat blocks on both sides of each turn keep the stairs out of the corner.
+			for (int run = 1; run <= span && y < surfaceY; run++) {
+				x += DX[forward];
+				z += DZ[forward];
+				boolean stair = run % 2 == 0 && run < span;
+				if (run > 2 && run % 2 != 0) y++;
+				steps.add(new Step(new MinePoint(x, y, z), forward, stair));
+			}
+			forward = (forward + turn) % 4;
+		}
+		return new MineDecline(steps);
+	}
+
 	public MinePoint entrance() {
 		return steps.get(steps.size() - 1).point();
+	}
+
+	boolean hasClearSteps(Map<Long, MineBlock> blocks) {
+		for (Step step : steps) {
+			MinePoint p = step.point;
+			int floor = p.y() - (step.stairs ? 0 : 1);
+			MineBlock expected = step.stairs ? stair(step.direction) : MineBlock.PLANKS;
+			if (blocks.get(new MinePoint(p.x(), floor, p.z()).packed()) != expected) return false;
+			for (int dy = 1; dy <= 2; dy++) {
+				if (blocks.get(new MinePoint(p.x(), floor + dy, p.z()).packed()) != MineBlock.AIR) return false;
+			}
+		}
+		return true;
 	}
 
 	void build(Map<Long, MineBlock> blocks) {
