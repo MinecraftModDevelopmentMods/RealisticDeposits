@@ -686,6 +686,7 @@ jobs:
           fi
 
       - name: Publish RealisticDeposits
+        id: curseforge
         uses: Kira-NT/mc-publish@52307b03863581dec6b652b83e597aec02ebb075 # v3.3.1
         with:
           curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
@@ -705,6 +706,17 @@ jobs:
             ${{ runner.temp }}/release-input/${{ needs.preflight.outputs.main_jar }}
             ${{ runner.temp }}/release-input/${{ needs.preflight.outputs.sources_jar }}
             ${{ runner.temp }}/release-input/${{ needs.preflight.outputs.javadoc_jar }}
+
+      - name: Record CurseForge upload receipt
+        env:
+          CURSEFORGE_FILE_ID: ${{ steps.curseforge.outputs.curseforge-version }}
+        run: |
+          if [[ "$CURSEFORGE_FILE_ID" =~ ^[0-9]+$ ]]; then
+            receipt="CurseForge accepted upload (file ID: $CURSEFORGE_FILE_ID)."
+          else
+            receipt="CurseForge upload succeeded; the publishing action did not return a numeric file ID."
+          fi
+          printf '%s\n' "$receipt" | tee -a "$GITHUB_STEP_SUMMARY"
 
   publish_github:
     name: Publish GitHub Release

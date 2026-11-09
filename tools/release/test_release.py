@@ -67,6 +67,7 @@ class ReleaseContractTest(unittest.TestCase):
         confirmation = workflow.split("  release_confirmation:\n", 1)[1].split("  create_release_tag:\n", 1)[0]
         self.assertIn('required=(CURSEFORGE_TOKEN)', confirmation)
         self.assertIn('! "$EXPECTED_CHECKSUMS_SHA256" =~ ^[0-9a-fA-F]{64}$', confirmation)
+        self.assertIn("steps.curseforge.outputs.curseforge-version", curseforge)
 
     def test_verified_manifest_is_checked_before_publication(self):
         workflow = (ROOT / ".github/workflows/deploy-release.yml").read_text()
