@@ -76,6 +76,8 @@ public final class LapisPattern {
 	static LapisDistrict.Site site(DepositDefinition definition, MineTerrainSampler terrain,
 			Optional<GeologySampler> sampler, Set<IBlockState> hosts, boolean physical) {
 		return new LapisDistrict.Site() {
+			@Override public boolean hasPhysicalStrata() { return physical; }
+
 			@Override
 			public int surfaceY(int x, int z) {
 				return terrain.naturalSurfaceY(x, z);

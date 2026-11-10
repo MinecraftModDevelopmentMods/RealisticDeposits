@@ -13,7 +13,7 @@ class ReleaseContractTest(unittest.TestCase):
         properties = dict(line.split("=", 1) for line in
                           (ROOT / "gradle.properties").read_text().splitlines()
                           if "=" in line and not line.startswith("#"))
-        self.assertEqual("0.6.0.110021", properties["mod_version"])
+        self.assertEqual("0.7.0.110021", properties["mod_version"])
         self.assertEqual("4.1.6.110021", properties["orespawn_version"])
         self.assertEqual("9518063", properties["orespawn_curse_file_id"])
         self.assertEqual("05DB7CBFAADC815D6A713DACDFB9F0647BCED49CCFC357FB2FF010E95BD1379F",

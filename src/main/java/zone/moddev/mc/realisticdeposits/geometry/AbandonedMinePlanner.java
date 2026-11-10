@@ -40,7 +40,7 @@ public final class AbandonedMinePlanner {
 			for (int sign : offset == 0 ? new int[] {1} : new int[] {1, -1}) {
 				int height = initial + offset * sign;
 				if (height < landing.y() + 6 || height - landing.y() > MAXIMUM_SHAFT_DEPTH || height > 245) continue;
-				MinePoint entrance = MineDecline.plan(landing, height, body.identity().seed()).entrance();
+				MinePoint entrance = body.decline(landing, height).entrance();
 				if (surface.applyAsInt(entrance.x(), entrance.z()) == height) return plan(body, settings, height);
 			}
 		}
@@ -112,7 +112,7 @@ public final class AbandonedMinePlanner {
 				if (air.contains(rubble)) blocks.put(rubble, MineBlock.COBBLESTONE);
 			}
 		}
-		MineDecline access = MineDecline.plan(landing, surfaceY, body.identity().seed());
+		MineDecline access = body.decline(landing, surfaceY);
 		access.build(blocks);
 		if (!sealClosedPockets(blocks, access.entrance(), landing)) return Optional.empty();
 

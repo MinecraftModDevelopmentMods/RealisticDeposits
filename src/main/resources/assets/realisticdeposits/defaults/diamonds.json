@@ -26,7 +26,8 @@
         "surface_cover": [4, 12],
         "district_radius": 192,
         "ore_density": 0.28,
-        "legacy_selection_scale": 0.25
+        "legacy_selection_scale": 0.25,
+        "rim_workings": true
       }
     },
     {

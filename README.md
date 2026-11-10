@@ -15,9 +15,10 @@ It runs on [MMD OreSpawn](https://github.com/MinecraftModDevelopmentMods/OreSpaw
 The project starts with Minecraft 1.10.2 and is intended to follow the
 maintained OreSpawn branches across Forge and NeoForge.
 
-Version 0.6.0.110021 is a local candidate for Minecraft 1.10.2. It adds rare
-emerald pockets and occasional abandoned workings without reducing ordinary
-emerald generation. Try a fresh world to see the new rules: existing
+Version 0.7.0.110021 adjusts the balance for fresh Minecraft 1.10.2 worlds.
+Coal, iron and lapis keep more ordinary ore between mines, diamond starter
+workings follow the pipe wall, and some lapis and emerald sites can retry a
+poor fit. Ordinary emerald generation is unchanged. Existing
 worlds keep their settings, generated chunks and saved mine layouts. Back up
 important worlds before updating.
 
@@ -97,12 +98,12 @@ folded horizon, a 160–240 block down-dip span, and a 3–8 block thickness. It
 `density` controls the disseminated halo around the connected mineralized
 routes rather than producing a uniformly random cloud. Two or three faults
 introduce short, recoverable breaks and modest vertical or lateral offsets.
-The shipped iron definition uses `hybrid` interaction with 15% background iron
+The shipped iron definition uses `hybrid` interaction with 25% background iron
 so early play remains viable while a discovered district can support a
 long-lived mine and rail network.
 
 The separate coal catalogue adds two to four beds across a large coalfield,
-keeping 15% ordinary background coal. It favours sedimentary and wetland basins
+keeping 25% ordinary background coal. It favours sedimentary and wetland basins
 while allowing sedimentary cover in some other geological regions. Coalfields
 use plain stone without physical strata, or suitable existing sedimentary
 rocks when those strata are active. Old catalogues are never overwritten, and
@@ -119,7 +120,9 @@ Lapis occurs in smaller, irregular lenses rather than huge ore-filled layers.
 With physical Mineralogy strata, lenses fit into natural marble; limestone,
 dolomite and decorative marble are not substitutes. Without those strata,
 natural vanilla stone variants provide a simpler setting. The separate lapis
-catalogue keeps 15% background generation. A discovery can supply a lasting
+catalogue keeps 30% background generation. Where a proposed site doesn't fit
+natural marble, the new defaults check nearby positions in the same region.
+A discovery can supply a lasting
 reserve because each vanilla lapis ore block drops several lapis pieces.
 
 Deposits only affect newly generated chunks. Changing these settings does not

@@ -70,6 +70,35 @@ public class LapisDistrictTest {
 	}
 
 	@Test
+	void boundedMarbleSearchRecoversAFailedSiteWithoutChangingLegacyOrNativeGeometry() {
+		long seed = 81;
+		LapisDistrict original = body(seed);
+		int rx = original.identity().regionX(), rz = original.identity().regionZ();
+		DepositDefinition current = LapisCatalogTest.defaults();
+		com.google.gson.JsonObject json = current.toJson();
+		json.getAsJsonObject("shape").remove("marble_search_radius");
+		DepositDefinition captured = zone.moddev.mc.realisticdeposits.config.DepositCatalogLoader
+				.loadDefinition(json, "captured lapis");
+		assertEquals(json, captured.toJson());
+		LapisDistrict.Site marble = new LapisDistrict.Site() {
+			@Override public int surfaceY(int x, int z) { return 90; }
+			@Override public String geome(int x, int z, int y) { return "orespawn:mountain_belt"; }
+			@Override public boolean hasPhysicalStrata() { return true; }
+			@Override public double fitHeight(int x, int z, double target, int thickness) {
+				return Math.hypot(x - original.centerX(), z - original.centerZ()) < 37 ? Double.NaN : target;
+			}
+		};
+		assertFalse(LapisDistrict.plan(captured, seed, "minecraft:overworld", rx, rz, marble).isPresent());
+		LapisDistrict fitted = LapisDistrict.plan(current, seed, "minecraft:overworld", rx, rz, marble).get();
+		assertEquals(original.identity().toString(), fitted.identity().toString());
+		assertEquals(rx, Math.floorDiv(fitted.centerX(), 1024));
+		assertEquals(rz, Math.floorDiv(fitted.centerZ(), 1024));
+		assertEquals(blocks(fitted, false), blocks(LapisDistrict.plan(current, seed, "minecraft:overworld", rx, rz, marble).get(), true));
+		assertEquals(blocks(original, false), blocks(LapisDistrict.plan(captured, seed, "minecraft:overworld", rx, rz,
+				site("orespawn:mountain_belt", 90)).get(), true));
+	}
+
+	@Test
 	void richPocketsContainFollowableSectionsRatherThanScatteredSingleBlocks() {
 		LapisDistrict body = body(81);
 		Set<Long> remaining = blocks(body, false);

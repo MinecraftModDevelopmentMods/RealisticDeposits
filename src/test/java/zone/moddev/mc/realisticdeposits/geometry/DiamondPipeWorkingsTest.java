@@ -93,4 +93,41 @@ class DiamondPipeWorkingsTest {
 
 		return visited;
 	}
+
+	@Test
+	void rimRouteKeepsThePipeButExposesLessOfItsOre() {
+		int checked = 0, legacyOre = 0, rimOre = 0;
+		for (int region = -8; region < 8; region++) {
+			java.util.Optional<DiamondDistrict> picked = DiamondDistrict.plan(DiamondFixtures.pipe(),
+					3346071746553592696L, "minecraft:overworld", region, -3, SITE);
+			if (!picked.isPresent()) continue;
+			DiamondDistrict district = picked.get();
+			for (int i = 0; i < district.pipes().size(); i++) {
+				DiamondPipeWorkingsBody legacy = new DiamondPipeWorkingsBody(district, i);
+				DiamondPipeWorkingsBody rim = new DiamondPipeWorkingsBody(district, i, true);
+				AbandonedMinePlan a = AbandonedMinePlanner.plan(legacy, ALWAYS, 80).get();
+				AbandonedMinePlan b = AbandonedMinePlanner.plan(rim, ALWAYS, 80).get();
+				assertEquals(legacy.identity().toString(), rim.identity().toString());
+				assertEquals(b.blocks(), AbandonedMinePlanner.plan(rim, ALWAYS, 80).get().blocks());
+				assertTrue(reachable(b).contains(b.landing().packed()));
+				legacyOre += exposed(a, legacy);
+				rimOre += exposed(b, rim);
+				checked++;
+			}
+		}
+		assertTrue(checked >= 8 && rimOre > 0 && rimOre * 2 < legacyOre,
+				"Rim routes should offer a clue without exposing the core: " + rimOre + " vs " + legacyOre);
+	}
+
+	private static int exposed(AbandonedMinePlan plan, DiamondPipeWorkingsBody body) {
+		Set<Long> ore = new HashSet<>();
+		for (long packed : reachable(plan)) {
+			MinePoint p = MinePoint.unpack(packed);
+			for (int[] d : new int[][] {{1,0,0}, {-1,0,0}, {0,1,0}, {0,-1,0}, {0,0,1}, {0,0,-1}}) {
+				MinePoint q = new MinePoint(p.x()+d[0], p.y()+d[1], p.z()+d[2]);
+				if (!plan.blocks().containsKey(q.packed()) && body.isOreAt(q.x(),q.y(),q.z())) ore.add(q.packed());
+			}
+		}
+		return ore.size();
+	}
 }

@@ -73,12 +73,17 @@ public final class EmeraldPocketSettings implements DepositShapeSettings {
 		private final IntRange strike;
 		private final IntRange oreBlocks;
 		private final boolean workings;
+		private final int fitAttempts;
 
 		public RichFind(double chance, IntRange pockets, IntRange strike, IntRange oreBlocks) {
 			this(chance, pockets, strike, oreBlocks, false);
 		}
 
 		public RichFind(double chance, IntRange pockets, IntRange strike, IntRange oreBlocks, boolean workings) {
+			this(chance, pockets, strike, oreBlocks, workings, 1);
+		}
+
+		public RichFind(double chance, IntRange pockets, IntRange strike, IntRange oreBlocks, boolean workings, int fitAttempts) {
 			if (!Double.isFinite(chance) || chance <= 0 || chance > 1) {
 				throw new IllegalArgumentException("Invalid rich emerald find chance");
 			}
@@ -87,6 +92,7 @@ public final class EmeraldPocketSettings implements DepositShapeSettings {
 			this.strike = checked(strike, 8, 96, "rich strike length");
 			this.oreBlocks = checked(oreBlocks, 2, 120, "rich ore budget");
 			this.workings = workings;
+			this.fitAttempts = checkedFitAttempts(fitAttempts);
 			validateSpacing(pockets, strike, oreBlocks);
 		}
 
@@ -95,6 +101,7 @@ public final class EmeraldPocketSettings implements DepositShapeSettings {
 		public IntRange strikeLength() { return strike; }
 		public IntRange oreBlocks() { return oreBlocks; }
 		public boolean workings() { return workings; }
+		public int fitAttempts() { return fitAttempts; }
 
 		private JsonObject toJson() {
 			JsonObject json = new JsonObject();
@@ -103,6 +110,7 @@ public final class EmeraldPocketSettings implements DepositShapeSettings {
 			json.add("strike_length", DiamondPipeSettings.array(strike));
 			json.add("ore_blocks", DiamondPipeSettings.array(oreBlocks));
 			if (workings) json.addProperty("workings", true);
+			if (fitAttempts > 1) json.addProperty("fit_attempts", fitAttempts);
 			return json;
 		}
 	}
@@ -112,8 +120,13 @@ public final class EmeraldPocketSettings implements DepositShapeSettings {
 		private final IntRange zones;
 		private final IntRange strike;
 		private final IntRange oreBlocks;
+		private final int fitAttempts;
 
 		public LargeMine(double chance, IntRange zones, IntRange strike, IntRange oreBlocks) {
+			this(chance, zones, strike, oreBlocks, 1);
+		}
+
+		public LargeMine(double chance, IntRange zones, IntRange strike, IntRange oreBlocks, int fitAttempts) {
 			if (!Double.isFinite(chance) || chance <= 0 || chance > 1) {
 				throw new IllegalArgumentException("Invalid large emerald mine chance");
 			}
@@ -121,6 +134,7 @@ public final class EmeraldPocketSettings implements DepositShapeSettings {
 			this.zones = checked(zones, 3, 6, "large zone count");
 			this.strike = checked(strike, 96, 192, "large strike length");
 			this.oreBlocks = checked(oreBlocks, 200, 500, "large ore budget");
+			this.fitAttempts = checkedFitAttempts(fitAttempts);
 			if (strike.minimum() < 24 * (zones.maximum() - 1)
 					|| oreBlocks.maximum() > 108 * zones.minimum()) {
 				throw new IllegalArgumentException("Large emerald zones need separation and at most 54 ore per pocket");
@@ -131,6 +145,7 @@ public final class EmeraldPocketSettings implements DepositShapeSettings {
 		public IntRange zones() { return zones; }
 		public IntRange strikeLength() { return strike; }
 		public IntRange oreBlocks() { return oreBlocks; }
+		public int fitAttempts() { return fitAttempts; }
 
 		private JsonObject toJson() {
 			JsonObject json = new JsonObject();
@@ -138,8 +153,14 @@ public final class EmeraldPocketSettings implements DepositShapeSettings {
 			json.add("zones", DiamondPipeSettings.array(zones));
 			json.add("strike_length", DiamondPipeSettings.array(strike));
 			json.add("ore_blocks", DiamondPipeSettings.array(oreBlocks));
+			if (fitAttempts > 1) json.addProperty("fit_attempts", fitAttempts);
 			return json;
 		}
+	}
+
+	private static int checkedFitAttempts(int value) {
+		if (value < 1 || value > 8) throw new IllegalArgumentException("Emerald fitting requires 1 to 8 attempts");
+		return value;
 	}
 
 	private static IntRange checked(IntRange value, int minimum, int maximum, String name) {

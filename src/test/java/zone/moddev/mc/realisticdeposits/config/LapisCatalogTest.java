@@ -33,7 +33,7 @@ public class LapisCatalogTest {
 
 		assertEquals("lapis_lens", definition.shape().type());
 		assertEquals("minecraft:lapis_ore", definition.resource());
-		assertEquals(0.15, definition.effectiveBackgroundGenerationScale().getAsDouble());
+		assertEquals(0.30, definition.effectiveBackgroundGenerationScale().getAsDouble());
 		assertTrue(definition.abandonedMine().enabled());
 		assertEquals(1.0, definition.abandonedMine().chance());
 	}

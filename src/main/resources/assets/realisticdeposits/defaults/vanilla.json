@@ -8,7 +8,7 @@
       "resource": "minecraft:iron_ore",
       "alignment": "massive_rare",
       "interaction": "hybrid",
-      "background_generation_scale": 0.15,
+      "background_generation_scale": 0.25,
       "dimensions": [
         "minecraft:overworld"
       ],

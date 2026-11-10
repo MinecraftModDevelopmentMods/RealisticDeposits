@@ -12,4 +12,8 @@ public interface MineableDepositBody {
 	int maximumCandidateYAt(int x, int z);
 	boolean isOreAt(int x, int y, int z);
 	MinePoint miningRoutePoint(double along, double lateralOffset);
+
+	default MineDecline decline(MinePoint landing, int surfaceY) {
+		return MineDecline.plan(landing, surfaceY, identity().seed());
+	}
 }

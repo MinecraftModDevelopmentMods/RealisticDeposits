@@ -199,7 +199,8 @@ public final class DiamondPattern {
 						BlockBounds bounds = pipe.bounds();
 
 						if (source.abandonedMine().enabled()) {
-							MineWorkingsGenerator.offer(context, source, new DiamondPipeWorkingsBody(district, pipeIndex));
+							MineWorkingsGenerator.offer(context, source,
+									new DiamondPipeWorkingsBody(district, pipeIndex, source.pipe().rimWorkings()));
 						}
 						if (!bounds.intersectsChunk(context.chunkX(), context.chunkZ())) continue;
 

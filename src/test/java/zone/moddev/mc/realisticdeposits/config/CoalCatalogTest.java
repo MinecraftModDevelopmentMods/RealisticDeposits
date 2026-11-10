@@ -24,7 +24,7 @@ class CoalCatalogTest {
 				new InputStreamReader(source, StandardCharsets.UTF_8), "coal.json");
 		assertEquals(1, catalogue.definitions().size());
 		assertEquals("minecraft:coal_ore", catalogue.definitions().get(0).resource());
-		assertEquals(0.15D, catalogue.definitions().get(0).effectiveBackgroundGenerationScale().getAsDouble());
+		assertEquals(0.25D, catalogue.definitions().get(0).effectiveBackgroundGenerationScale().getAsDouble());
 		assertTrue(catalogue.definitions().get(0).isCoal());
 		assertEquals(32, catalogue.definitions().get(0).regionSpacingChunks());
 		assertTrue(catalogue.definitions().get(0).abandonedMine().enabled());

@@ -14,9 +14,15 @@ public final class DiamondPipeSettings implements DepositShapeSettings {
 	private final int radius;
 	private final double density;
 	private final double legacyScale;
+	private final boolean rimWorkings;
 
 	public DiamondPipeSettings(IntRange pipes, IntRange diameter, IntRange rootY,
 			IntRange cover, int radius, double density, double legacyScale) {
+		this(pipes, diameter, rootY, cover, radius, density, legacyScale, false);
+	}
+
+	public DiamondPipeSettings(IntRange pipes, IntRange diameter, IntRange rootY,
+			IntRange cover, int radius, double density, double legacyScale, boolean rimWorkings) {
 		this.pipes = checked(pipes, 1, 8, "pipe count");
 		this.diameter = checked(diameter, 8, 256, "upper diameter");
 		this.rootY = checked(rootY, 1, 128, "root height");
@@ -30,6 +36,7 @@ public final class DiamondPipeSettings implements DepositShapeSettings {
 		this.radius = radius;
 		this.density = density;
 		this.legacyScale = legacyScale;
+		this.rimWorkings = rimWorkings;
 	}
 
 	@Override public String type() { return "diamond_pipe"; }
@@ -40,6 +47,7 @@ public final class DiamondPipeSettings implements DepositShapeSettings {
 	public int districtRadius() { return radius; }
 	public double oreDensity() { return density; }
 	public double legacySelectionScale() { return legacyScale; }
+	public boolean rimWorkings() { return rimWorkings; }
 
 	@Override
 	public JsonObject toJson() {
@@ -52,6 +60,7 @@ public final class DiamondPipeSettings implements DepositShapeSettings {
 		json.addProperty("district_radius", radius);
 		json.addProperty("ore_density", density);
 		json.addProperty("legacy_selection_scale", legacyScale);
+		if (rimWorkings) json.addProperty("rim_workings", true);
 		return json;
 	}
 

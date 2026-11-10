@@ -410,8 +410,13 @@ public final class MineWorkingsRuntimeProbe {
 	}
 
 	static void verifyAccess(WorldServer world, AbandonedMinePlan plan, boolean hasMarker) {
+		verifyAccess(world, plan, hasMarker, null);
+	}
+
+	static void verifyAccess(WorldServer world, AbandonedMinePlan plan, boolean hasMarker, MineDecline expectedDecline) {
 		if (!plan.blocks().containsValue(MineBlock.LADDER_WEST)) {
-			List<MineDecline.Step> steps = MineDecline.plan(plan.landing(), plan.entrance().y(), plan.identity()).steps();
+			List<MineDecline.Step> steps = (expectedDecline == null
+					? MineDecline.plan(plan.landing(), plan.entrance().y(), plan.identity()) : expectedDecline).steps();
 			require(steps.get(steps.size() - 1).point().equals(plan.entrance()), "The access entrance moved");
 			int loaded = world.getChunkProvider().getLoadedChunkCount();
 
