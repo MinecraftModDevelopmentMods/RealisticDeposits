@@ -25,7 +25,8 @@
         "surface_cover": [8, 8],
         "vein_trace": true,
         "rich_find": {
-          "chance": 0.08,
+          "chance": 0.14,
+          "fit_attempts": 5,
           "pockets": [4, 6],
           "strike_length": [52, 80],
           "ore_blocks": [70, 120],
@@ -33,6 +34,7 @@
         },
         "large_mine": {
           "chance": 0.08,
+          "fit_attempts": 2,
           "zones": [4, 5],
           "strike_length": [120, 168],
           "ore_blocks": [260, 420]

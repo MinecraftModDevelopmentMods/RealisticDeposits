@@ -81,7 +81,7 @@ class RealisticDepositsRuntimeTest {
 		try (java.io.InputStream source = getClass().getResourceAsStream(
 				"/assets/realisticdeposits/defaults/coal.json")) {
 			coal = new String(com.google.common.io.ByteStreams.toByteArray(source), StandardCharsets.UTF_8)
-					.replace("0.15", "0.37").getBytes(StandardCharsets.UTF_8);
+					.replace("0.25", "0.37").getBytes(StandardCharsets.UTF_8);
 		}
 		Files.write(deposits.resolve("vanilla.json"), iron);
 		Files.write(deposits.resolve("coal.json"), coal);

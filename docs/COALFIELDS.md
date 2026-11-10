@@ -35,7 +35,7 @@ shows every setting.
 - 32-chunk regions, with a 50% candidate chance before geological selection.
 - 384-768 blocks along strike and 128-256 blocks across.
 - Two to four beds, 1-3 blocks thick, separated by 4-12 blocks of rock.
-- Hybrid generation with 15% ordinary background coal.
+- Hybrid generation with 25% ordinary background coal in fresh defaults.
 - Abandoned workings attempted at every new coalfield where safe. Existing
   catalogues and saved-world settings keep their choices.
 

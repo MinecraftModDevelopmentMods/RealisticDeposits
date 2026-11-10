@@ -18,6 +18,7 @@ public final class LapisDistrict implements MineableDepositBody {
 
 		/** Returns a suitable lens centre, or NaN when the host interval is too thin. */
 		double fitHeight(int x, int z, double targetY, int thickness);
+		default boolean hasPhysicalStrata() { return false; }
 	}
 
 	private final DepositIdentity identity;
@@ -65,8 +66,35 @@ public final class LapisDistrict implements MineableDepositBody {
 		Random random = new Random(identity.seed());
 		LapisLensSettings settings = definition.lapis();
 		int size = definition.regionSpacingChunks() * 16;
-		int x = Math.toIntExact((long) regionX * size + random.nextInt(size));
-		int z = Math.toIntExact((long) regionZ * size + random.nextInt(size));
+		int originX = Math.toIntExact((long) regionX * size);
+		int originZ = Math.toIntExact((long) regionZ * size);
+		int x = Math.toIntExact((long) originX + random.nextInt(size));
+		int z = Math.toIntExact((long) originZ + random.nextInt(size));
+		Optional<LapisDistrict> original = planAt(definition, identity, settings, site, x, z, random);
+		if (original.isPresent() || !site.hasPhysicalStrata() || settings.marbleSearchRadius() == 0) return original;
+
+		// Look for nearby natural marble only after the original proposal fails.
+		// An alternative stays in the same region and uses the same lens settings.
+		double bearing = StableHash.unit(identity.seed() ^ 0x339F7B6EC5F255DAL) * Math.PI * 2;
+		for (int ring = 1; ring <= 2; ring++) {
+			double radius = ring * settings.marbleSearchRadius() / 2.0;
+			for (int step = 0; step < 8; step++) {
+				double angle = bearing + step * Math.PI / 4;
+				int px = x + (int) Math.round(radius * Math.cos(angle));
+				int pz = z + (int) Math.round(radius * Math.sin(angle));
+				if (Math.floorDiv(px, size) != regionX || Math.floorDiv(pz, size) != regionZ) continue;
+				Random retry = new Random(identity.seed());
+				retry.nextInt(size);
+				retry.nextInt(size);
+				Optional<LapisDistrict> fitted = planAt(definition, identity, settings, site, px, pz, retry);
+				if (fitted.isPresent()) return fitted;
+			}
+		}
+		return Optional.empty();
+	}
+
+	private static Optional<LapisDistrict> planAt(DepositDefinition definition, DepositIdentity identity,
+			LapisLensSettings settings, Site site, int x, int z, Random random) {
 		int surface = site.surfaceY(x, z);
 		int cover = settings.surfaceCover().sample(random);
 		int maximum = Math.min(definition.maximumY(), surface - cover);

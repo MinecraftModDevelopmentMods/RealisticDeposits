@@ -122,19 +122,21 @@ public final class DepositCatalogLoader {
 			if (shape.has("rich_find")) {
 				JsonObject spec = object(shape, "rich_find", path);
 				String richPath = path + " rich_find";
-				unknownKeys(spec, keys("chance", "pockets", "strike_length", "ore_blocks", "workings"), richPath, warnings);
+				unknownKeys(spec, keys("chance", "pockets", "strike_length", "ore_blocks", "workings", "fit_attempts"), richPath, warnings);
 				rich = new EmeraldPocketSettings.RichFind(number(spec, "chance", richPath),
 						integerRange(spec, "pockets", richPath), integerRange(spec, "strike_length", richPath),
-						integerRange(spec, "ore_blocks", richPath), bool(spec, "workings", false, richPath));
+						integerRange(spec, "ore_blocks", richPath), bool(spec, "workings", false, richPath),
+						spec.has("fit_attempts") ? integer(spec, "fit_attempts", richPath) : 1);
 			}
 			EmeraldPocketSettings.LargeMine large = null;
 			if (shape.has("large_mine")) {
 				String largePath = path + " large_mine";
 				JsonObject spec = object(shape, "large_mine", path);
-				unknownKeys(spec, keys("chance", "zones", "strike_length", "ore_blocks"), largePath, warnings);
+				unknownKeys(spec, keys("chance", "zones", "strike_length", "ore_blocks", "fit_attempts"), largePath, warnings);
 				large = new EmeraldPocketSettings.LargeMine(number(spec, "chance", largePath),
 						integerRange(spec, "zones", largePath), integerRange(spec, "strike_length", largePath),
-						integerRange(spec, "ore_blocks", largePath));
+						integerRange(spec, "ore_blocks", largePath),
+						spec.has("fit_attempts") ? integer(spec, "fit_attempts", largePath) : 1);
 			}
 			return new EmeraldPocketSettings(integerRange(shape, "pockets", path),
 					integerRange(shape, "strike_length", path), integerRange(shape, "ore_blocks", path),
@@ -143,12 +145,13 @@ public final class DepositCatalogLoader {
 
 		if ("lapis_lens".equals(type)) {
 			unknownKeys(shape, keys("type", "lenses", "strike_length", "width", "thickness",
-					"surface_cover", "legacy_selection_scale"), path + " shape", warnings);
+					"surface_cover", "legacy_selection_scale", "marble_search_radius"), path + " shape", warnings);
 
 			return new LapisLensSettings(integerRange(shape, "lenses", path),
 					integerRange(shape, "strike_length", path), integerRange(shape, "width", path),
 					integerRange(shape, "thickness", path), integerRange(shape, "surface_cover", path),
-					number(shape, "legacy_selection_scale", path));
+					number(shape, "legacy_selection_scale", path),
+					shape.has("marble_search_radius") ? integer(shape, "marble_search_radius", path) : 0);
 		}
 
 		if ("gold_lode".equals(type)) {
@@ -171,11 +174,12 @@ public final class DepositCatalogLoader {
 
 		if ("diamond_pipe".equals(type)) {
 			unknownKeys(shape, keys("type", "pipes", "upper_diameter", "root_y", "surface_cover",
-					"district_radius", "ore_density", "legacy_selection_scale"), path + " shape", warnings);
+					"district_radius", "ore_density", "legacy_selection_scale", "rim_workings"), path + " shape", warnings);
 			return new DiamondPipeSettings(integerRange(shape, "pipes", path),
 					integerRange(shape, "upper_diameter", path), integerRange(shape, "root_y", path),
 					integerRange(shape, "surface_cover", path), integer(shape, "district_radius", path),
-					number(shape, "ore_density", path), number(shape, "legacy_selection_scale", path));
+					number(shape, "ore_density", path), number(shape, "legacy_selection_scale", path),
+					bool(shape, "rim_workings", false, path));
 		}
 
 		if ("diamond_placer".equals(type)) {

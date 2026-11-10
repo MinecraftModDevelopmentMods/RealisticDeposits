@@ -21,6 +21,10 @@ public final class MineDecline {
 	}
 
 	public static MineDecline plan(MinePoint landing, int surfaceY, long identity) {
+		return plan(landing, surfaceY, identity, -1, -1);
+	}
+
+	static MineDecline plan(MinePoint landing, int surfaceY, long identity, int first, int turns) {
 		if (surfaceY <= landing.y() || surfaceY - landing.y() > AbandonedMinePlanner.MAXIMUM_SHAFT_DEPTH) {
 			throw new IllegalArgumentException("Mine access depth is outside the supported range");
 		}
@@ -28,6 +32,10 @@ public final class MineDecline {
 		Random random = new Random(StableHash.mix(identity ^ ACCESS_SALT));
 		int forward = random.nextInt(4);
 		int across = (forward + (random.nextBoolean() ? 1 : 3)) % 4;
+		if (first >= 0) {
+			forward = first;
+			across = turns;
+		}
 		int x = landing.x();
 		int y = landing.y();
 		int z = landing.z();

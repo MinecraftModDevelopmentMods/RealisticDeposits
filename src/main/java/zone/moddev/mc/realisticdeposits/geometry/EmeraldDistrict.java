@@ -104,11 +104,20 @@ public final class EmeraldDistrict implements MineableDepositBody {
 		double direction = random.nextDouble() * 2 * Math.PI;
 		EmeraldPocketSettings.RichFind rich = settings.rich();
 		if (rich != null && StableHash.unit(identity.seed() ^ RICH_CHANCE_SALT) < rich.chance()) {
-			Random richer = new Random(identity.seed() ^ RICH_LAYOUT_SALT);
-			Optional<EmeraldDistrict> larger = fitDistrict(definition, identity, site, (int) x, (int) z,
-					rich.pocketCount().sample(richer), rich.strikeLength().sample(richer), rich.oreBlocks().sample(richer),
-					cover, targetY, direction, richer, true);
-			if (larger.isPresent()) return larger;
+			for (int attempt = 0; attempt < rich.fitAttempts(); attempt++) {
+				double bearing = direction + attempt * Math.PI / 4;
+				int px = (int) x, pz = (int) z;
+				if (attempt >= 2) {
+					px += (int) Math.round(Math.cos(bearing) * 24);
+					pz += (int) Math.round(Math.sin(bearing) * 24);
+				}
+				if (Math.floorDiv(px, size) != rx || Math.floorDiv(pz, size) != rz) continue;
+				Random richer = new Random(identity.seed() ^ RICH_LAYOUT_SALT);
+				Optional<EmeraldDistrict> larger = fitDistrict(definition, identity, site, px, pz,
+						rich.pocketCount().sample(richer), rich.strikeLength().sample(richer), rich.oreBlocks().sample(richer),
+						cover, targetY, bearing, richer, true);
+				if (larger.isPresent()) return larger;
+			}
 		}
 		return fitDistrict(definition, identity, site, (int) x, (int) z, count, strike, budget,
 				cover, targetY, direction, random, false);
@@ -149,6 +158,15 @@ public final class EmeraldDistrict implements MineableDepositBody {
 
 	private static Optional<EmeraldDistrict> fitLarge(DepositDefinition definition, DepositIdentity identity,
 			int rx, int rz, EmeraldPocketSettings.LargeMine large, Site site) {
+		for (int attempt = 0; attempt < large.fitAttempts(); attempt++) {
+			Optional<EmeraldDistrict> result = fitLargeAttempt(definition, identity, rx, rz, large, site, attempt);
+			if (result.isPresent()) return result;
+		}
+		return Optional.empty();
+	}
+
+	private static Optional<EmeraldDistrict> fitLargeAttempt(DepositDefinition definition, DepositIdentity identity,
+			int rx, int rz, EmeraldPocketSettings.LargeMine large, Site site, int attempt) {
 		Random random = new Random(identity.seed() ^ LARGE_LAYOUT_SALT);
 		int strike = large.strikeLength().sample(random), zones = large.zones().sample(random);
 		int budget = large.oreBlocks().sample(random), cover = definition.emerald().surfaceCover().sample(random);
@@ -159,11 +177,17 @@ public final class EmeraldDistrict implements MineableDepositBody {
 		if (size <= 2 * margin) return Optional.empty();
 		long centerX = (long) rx * size + margin + random.nextInt(size - 2 * margin);
 		long centerZ = (long) rz * size + margin + random.nextInt(size - 2 * margin);
+		Random alternative = attempt == 0 ? null : new Random(StableHash.combine(identity.seed() ^ LARGE_LAYOUT_SALT, attempt));
+		if (alternative != null) {
+			centerX = (long) rx * size + margin + alternative.nextInt(size - 2 * margin);
+			centerZ = (long) rz * size + margin + alternative.nextInt(size - 2 * margin);
+		}
 		if (Math.abs(centerX) > 29_999_800 || Math.abs(centerZ) > 29_999_800
 				|| !site.acceptsGeome((int) centerX, (int) centerZ)) return Optional.empty();
 		int depth = definition.maximumY() - definition.minimumY() + 1;
 		int targetY = definition.minimumY() + depth / 3 + random.nextInt(Math.max(1, depth / 3));
 		double direction = random.nextDouble() * 2 * Math.PI;
+		if (alternative != null) direction = alternative.nextDouble() * 2 * Math.PI;
 		double alongX = Math.cos(direction), alongZ = Math.sin(direction);
 		boolean alongEastWest = Math.abs(alongX) >= Math.abs(alongZ);
 		int stepX = alongEastWest ? (alongX >= 0 ? 4 : -4) : 0;

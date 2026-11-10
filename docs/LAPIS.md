@@ -44,7 +44,10 @@ to eight pieces of lapis lazuli, averaging six before Fortune. Fortune increases
 that yield; Silk Touch returns the ore block instead. No new processing
 recipes, lapis grades or river placers are added.
 
-The default catalogue retains 15% ordinary background lapis. New lenses are
+The fresh default catalogue retains 30% ordinary background lapis. With
+physical strata active, `shape.marble_search_radius` lets a failed site try
+nearby positions inside the same region. The default radius is 96 blocks;
+absent or zero keeps the original single-site search. New lenses are
 deliberately concentrated, and their reward is not forced to equal vanilla's
 overall supply. Structures, caves and water can interrupt a deposit or prevent
 a safe mine entrance. Not every planned lens will be fully recoverable.

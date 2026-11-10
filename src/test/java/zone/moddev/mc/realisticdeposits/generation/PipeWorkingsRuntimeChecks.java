@@ -45,6 +45,7 @@ final class PipeWorkingsRuntimeChecks {
 		String scenario = System.getProperty("rd.mines.scenario", "flat");
 		boolean obstructed = "blocked".equals(scenario);
 		boolean undergroundWater = "mineralogy".equals(scenario);
+		boolean rimLava = "normal-structures".equals(scenario) && geometry.pipe().rimWorkings();
 		if (scenario.startsWith("mineralogy")) {
 			require(CoalGeology.active().physicalStrata, "The Mineralogy fixture did not activate physical strata");
 		}
@@ -63,7 +64,8 @@ final class PipeWorkingsRuntimeChecks {
 					if (!district.isPresent()) continue;
 
 					for (int index = 0; index < district.get().pipes().size(); index++) {
-						DiamondPipeWorkingsBody candidate = new DiamondPipeWorkingsBody(district.get(), index);
+						DiamondPipeWorkingsBody candidate = new DiamondPipeWorkingsBody(
+								district.get(), index, geometry.pipe().rimWorkings());
 						int surface = "wet".equals(scenario) ? 129 : terrain.surfaceY(AbandonedMinePlanner.landing(candidate));
 						Optional<AbandonedMinePlan> proposed = "wet".equals(scenario)
 								? AbandonedMinePlanner.plan(candidate, new AbandonedMineSettings(true, 1.0D), surface)
@@ -97,7 +99,8 @@ final class PipeWorkingsRuntimeChecks {
 
 			DiamondDistrict district = district(world, geometry, terrain, sampler,
 					Integer.parseInt(target.getProperty("region_x")), Integer.parseInt(target.getProperty("region_z"))).get();
-			body = new DiamondPipeWorkingsBody(district, Integer.parseInt(target.getProperty("pipe_index")));
+			body = new DiamondPipeWorkingsBody(district,
+					Integer.parseInt(target.getProperty("pipe_index")), geometry.pipe().rimWorkings());
 			int surface = "wet".equals(scenario) ? 129 : terrain.surfaceY(AbandonedMinePlanner.landing(body));
 			plan = "wet".equals(scenario) ? AbandonedMinePlanner.plan(body, new AbandonedMineSettings(true, 1.0D), surface).get()
 					: AbandonedMinePlanner.plan(body, new AbandonedMineSettings(true, 1.0D), terrain::naturalSurfaceY).get();
@@ -144,7 +147,7 @@ final class PipeWorkingsRuntimeChecks {
 			if (!rejected) {
 				require(data.plan(key) != null, "Pipe mine rejected: " + data.rejectionReason(key));
 				require(plan.blocks().equals(data.plan(key).blocks()), "Native pipe mine differs from its planner");
-				if (!obstructed && !undergroundWater) {
+				if (!obstructed && !undergroundWater && !rimLava) {
 					verify(world, plan, populatedChunks(world, plan), false);
 					world.setBlockState(marker(plan), Blocks.DIAMOND_BLOCK.getDefaultState(), 2);
 				}
@@ -183,22 +186,29 @@ final class PipeWorkingsRuntimeChecks {
 				require(world.getBlockState(chestPosition.down(2)).getBlock() != Blocks.PLANKS,
 						"The unsafe section was partly excavated");
 				report.setProperty("obstructed_section_preserved", "true");
-			} else if (undergroundWater) {
-				// This native-strata site has a spring beside the decline. The
-				// safety check must leave that whole section sealed, not drain it.
-				BlockPos spring = new BlockPos(49495, 36, 56632);
-				require(world.getBlockState(spring).getMaterial().isLiquid(), "The protected underground spring changed");
-				for (AbandonedMinePlan.Cell cell : plan.cellsInChunk(spring.getX() >> 4, spring.getZ() >> 4)) {
+			} else if (undergroundWater || rimLava) {
+				// The fixed rim route in normal terrain intersects a lava pocket;
+				// the legacy physical-strata fixture instead crosses a spring.
+				// Neither must be opened or partially excavated.
+				BlockPos liquid = rimLava ? new BlockPos(49498, 27, 49694) : new BlockPos(49499, 24, 56655);
+				require(world.getBlockState(liquid).getMaterial() == (rimLava
+						? net.minecraft.block.material.Material.LAVA : net.minecraft.block.material.Material.WATER),
+						"The protected underground liquid changed");
+				List<AbandonedMinePlan.Cell> blocked = plan.cellsInChunk(liquid.getX() >> 4, liquid.getZ() >> 4);
+				require(!blocked.isEmpty(), "The fixed liquid no longer tests a planned section");
+				for (AbandonedMinePlan.Cell cell : blocked) {
 					if (cell.block() == zone.moddev.mc.realisticdeposits.geometry.MineBlock.AIR) continue;
 					MinePoint point = cell.point();
 					require(!world.getBlockState(new BlockPos(point.x(), point.y(), point.z())).equals(expected(cell.block())),
 							"The flooded section was partly excavated at " + point);
 				}
-				report.setProperty("underground_water_preserved", "true");
+				report.setProperty(rimLava ? "underground_lava_preserved" : "underground_water_preserved", "true");
 			} else {
 				List<Long> built = populatedChunks(world, plan);
 				report.setProperty("checked_cells", Integer.toString(verify(world, plan, built, true)));
-				if (built.size() == allChunks(plan).size()) verifyAccess(world, plan, true);
+				if (built.size() == allChunks(plan).size()) {
+					verifyAccess(world, plan, true, body.decline(plan.landing(), plan.entrance().y()));
+				}
 			}
 		}
 

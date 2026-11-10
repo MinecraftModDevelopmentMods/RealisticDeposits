@@ -12,9 +12,15 @@ public final class LapisLensSettings implements DepositShapeSettings {
 	private final IntRange thickness;
 	private final IntRange cover;
 	private final double legacyScale;
+	private final int marbleSearchRadius;
 
 	public LapisLensSettings(IntRange lenses, IntRange strike, IntRange width,
 			IntRange thickness, IntRange cover, double legacyScale) {
+		this(lenses, strike, width, thickness, cover, legacyScale, 0);
+	}
+
+	public LapisLensSettings(IntRange lenses, IntRange strike, IntRange width,
+			IntRange thickness, IntRange cover, double legacyScale, int marbleSearchRadius) {
 		this.lenses = checked(lenses, 1, 6, "lens count");
 		this.strike = checked(strike, 32, 256, "strike length");
 		this.width = checked(width, 6, 48, "width");
@@ -26,6 +32,10 @@ public final class LapisLensSettings implements DepositShapeSettings {
 		}
 
 		this.legacyScale = legacyScale;
+		if (marbleSearchRadius < 0 || marbleSearchRadius > 128) {
+			throw new IllegalArgumentException("Lapis marble search radius must be between 0 and 128");
+		}
+		this.marbleSearchRadius = marbleSearchRadius;
 	}
 
 	@Override
@@ -39,6 +49,7 @@ public final class LapisLensSettings implements DepositShapeSettings {
 	public IntRange thickness() { return thickness; }
 	public IntRange surfaceCover() { return cover; }
 	public double legacySelectionScale() { return legacyScale; }
+	public int marbleSearchRadius() { return marbleSearchRadius; }
 
 	@Override
 	public JsonObject toJson() {
@@ -50,6 +61,7 @@ public final class LapisLensSettings implements DepositShapeSettings {
 		json.add("thickness", DiamondPipeSettings.array(thickness));
 		json.add("surface_cover", DiamondPipeSettings.array(cover));
 		json.addProperty("legacy_selection_scale", legacyScale);
+		if (marbleSearchRadius > 0) json.addProperty("marble_search_radius", marbleSearchRadius);
 
 		return json;
 	}

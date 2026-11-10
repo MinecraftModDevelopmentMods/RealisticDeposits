@@ -5,7 +5,7 @@ diamond-bearing river gravel. The 1-in-16 gravel roll stays fixed; pipes make
 up most of the supply, with river pockets as an occasional bonus. Ordinary
 background generation stays at 15%.
 
-The six-seed ore survey estimates 3.57 diamonds per chunk against 3.70 in
+The original 0.3 six-seed ore survey estimated 3.57 diamonds per chunk against 3.70 in
 the matched vanilla controls, before Fortune. Calibration and separate holdout
 averages both fall within 20% of their controls. The estimated split is about
 83% pipes, 2% placers and 15% background diamonds. Fortune increases all three
@@ -23,6 +23,11 @@ Pipes occur in rare districts, normally beneath OreSpawn's stable cratons. Each
 district contains one to three irregular bodies, wider near the top and narrower
 at depth. Diamonds occur in patches rather than filling the whole body. A few
 can occur close to the surface, but the upper parts are deliberately sparse.
+With `shape.rim_workings` enabled in fresh defaults, abandoned galleries follow
+the pipe wall and stairs approach from outside. A short inward cut can show
+where to dig without opening the rich interior for you. This changes the
+workings, not the pipe's ore plan. Older profiles without the setting retain
+the original layout.
 
 Pipes cut across existing rocks. Without Mineralogy, their hosts are natural
 vanilla stone, granite, diorite and andesite. With physical Mineralogy strata,

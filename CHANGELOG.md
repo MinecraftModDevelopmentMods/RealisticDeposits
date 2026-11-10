@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.0.110021
+
+- Keep more ordinary coal, iron and lapis between major finds in fresh worlds.
+- Route new diamond starter workings around the pipe wall without changing
+  the pipe or river placer rewards.
+- Search nearby natural marble when a lapis site fails to fit.
+- Give rich and large emerald sites a bounded search for suitable positions,
+  without changing their ore budgets or ordinary emerald generation.
+- Keep gold, saved ore rules, existing chunks and saved mine layouts unchanged.
+
 ## 0.6.0.110021
 
 Beta for Minecraft 1.10.2.

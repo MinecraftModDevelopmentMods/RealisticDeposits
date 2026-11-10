@@ -58,6 +58,12 @@ def main():
             location = ROOT / (f"run/config/realisticdeposits/deposits/{name}.json" if case == "regular"
                                else f"src/main/resources/assets/realisticdeposits/defaults/{name}.json")
             catalogue = json.loads(location.read_text())
+            if name == "diamonds" and case == "mineralogy":
+                # This saved regression targets the legacy decline beside a
+                # fixed spring. Fresh rim layouts have separate terrain tests.
+                for definition in catalogue["deposits"]:
+                    if definition["shape"]["type"] == "diamond_pipe":
+                        definition["shape"].pop("rim_workings", None)
             if not natural:
                 for definition in catalogue["deposits"]:
                     definition["enabled"] = definition["shape"]["type"] == "diamond_pipe" and case != "source-off"

@@ -107,7 +107,7 @@ public class EmeraldDepositTest {
 		assertFalse(legacy.toJson().getAsJsonObject("shape").has("rich_find"));
 		assertFalse(legacy.toJson().getAsJsonObject("shape").has("vein_trace"));
 		int total = 0, rich = 0;
-		for (int rx = -80; rx < 80; rx++) {
+		for (int rx = -160; rx < 160; rx++) {
 			Optional<EmeraldDistrict> sample = EmeraldDistrict.plan(definition, 19, OVERWORLD, rx, -1, STONE);
 			if (!sample.isPresent()) continue;
 			total++;
@@ -145,7 +145,8 @@ public class EmeraldDepositTest {
 			}
 			assertTrue(trace.size() >= 5);
 		}
-		assertTrue(rich > 0 && rich * 4 < total, "Larger finds should be possible but unusual");
+		assertTrue(rich > 0 && rich * 4 < total,
+				"Larger finds should be possible but unusual: " + rich + "/" + total);
 	}
 
 	@Test

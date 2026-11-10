@@ -1,4 +1,4 @@
-"""Read a Lapis mine on matched disposable 0.5 and 0.6 world copies."""
+"""Read a Lapis mine on matched disposable 0.5 and current-candidate world copies."""
 
 import argparse
 import json
@@ -74,7 +74,7 @@ def main():
                     if (old.get("owner") == "orespawn" and "owner_version" in old
                             and new.get("owner_version") == NEW_ENGINE_VERSION):
                         new["owner_version"] = old["owner_version"]
-            check_saved_profile(before, after, "0.6.0.110021")
+            check_saved_profile(before, after, "0.7.0.110021")
         else:
             assert before == after
         assert not any(key.endswith("overworld_emerald_pockets") for key in after["ores"])

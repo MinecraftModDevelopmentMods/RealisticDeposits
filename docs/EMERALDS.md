@@ -33,10 +33,11 @@ the workings are left for prospecting.
 
 The fresh defaults use a 35% selection chance per 64-chunk region before
 geology and host checks, at Y12–48 and with at least eight blocks of cover.
-Eight percent of candidates that reach the layout stage try the larger
-layout. If that does not fit the mountain-belt geology and eligible host,
-the generator tries the ordinary layout instead. Large mines have a
+Fourteen percent of candidates that reach the layout stage try the richer
+layout. The fresh defaults try up to five positions or directions before
+falling back to the ordinary layout. Large mines have a
 separate 8% roll, only in regions not selected for small or rich finds.
+They may try a second position if the first one doesn't fit.
 They remain more geographically restricted than iron formations; all
 their zones must fit the mountain-belt geology and eligible host rock. These are gameplay
 ranges for individual finds, not estimates of a real mine's production.
@@ -51,6 +52,9 @@ the linked galleries, subject to the ordinary abandoned-mine setting.
 The optional `shape.large_mine` sets the large-mine chance, zone count,
 strike and ore budget. Large mines always plan their own prospecting clues;
 the ordinary abandoned-mine setting still controls their starter workings.
+Each upper tier's optional `fit_attempts` controls its bounded placement
+search. Omit it for the original single attempt. Retries do not raise the ore
+budget or relax the host requirement.
 Leave `shape.large_mine` absent to keep the two-tier layout. Older catalogues
 without these fields and existing world
 profiles keep their previous settings. Generated chunks are never rewritten.
